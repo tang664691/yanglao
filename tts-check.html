@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>语音播报检测</title>
+<style>
+body{font-family:sans-serif;max-width:620px;margin:0 auto;padding:16px;line-height:1.8}
+h1{font-size:22px}
+p{font-size:17px;margin:8px 0}
+.ok{color:#16a34a;font-weight:bold}
+.bad{color:#dc2626;font-weight:bold}
+button{font-size:20px;padding:14px 30px;border:none;border-radius:12px;background:#1d4ed8;color:#fff;margin-top:10px}
+#log{background:#f3f4f6;padding:12px;border-radius:8px;margin-top:16px;font-size:14px;white-space:pre-wrap;word-break:break-all}
+</style>
+</head>
+<body>
+<h1>语音播报检测</h1>
+<p id="r1">检测中…</p>
+<p id="r2"></p>
+<p id="r3"></p>
+<button id="btn">点我测试发音（一二三）</button>
+<div id="log"></div>
+<script>
+var log = document.getElementById('log');
+function L(t){ log.textContent += t + "\n"; }
+var hasSS = !!(window.speechSynthesis);
+var hasU = typeof window.SpeechSynthesisUtterance === 'function';
+document.getElementById('r1').innerHTML = '语音合成接口：' + (hasSS && hasU ? '<span class="ok">支持</span>' : '<span class="bad">不支持</span>');
+function showVoices(){
+  var vs = [];
+  try { vs = window.speechSynthesis.getVoices() || []; } catch(e){}
+  document.getElementById('r2').innerHTML = '可用语音数量：' + vs.length;
+  var zh = vs.filter(function(v){ return v && v.lang && v.lang.toLowerCase().indexOf('zh') === 0; });
+  document.getElementById('r3').innerHTML = '中文语音：' + (zh.length ? zh.map(function(v){return v.name + '(' + v.lang + ')';}).join('、') : '<span class="bad">没有找到中文语音 —— 这就是没声音的主因</span>');
+  L('语音列表(' + vs.length + ')：' + vs.map(function(v){return v.name + ' ' + v.lang;}).join(' | '));
+}
+if (hasSS && hasU) {
+  try { window.speechSynthesis.onvoiceschanged = showVoices; } catch(e){}
+  showVoices();
+}
+document.getElementById('btn').addEventListener('click', function(){
+  if (!hasSS || !hasU) { L('接口不支持，无法测试'); return; }
+  var ss = window.speechSynthesis;
+  try { ss.cancel(); } catch(e){}
+  var u = new SpeechSynthesisUtterance('一二三');
+  u.lang = 'zh-CN'; u.rate = 1;
+  u.onstart = function(){ L('[结果] 已开始发声 ✓'); };
+  u.onend = function(){ L('[结果] 播放完成 ✓'); };
+  u.onerror = function(e){ L('[结果] 出错 ✗ 错误码: ' + e.error); };
+  try { ss.speak(u); L('已执行 speak，等待回调…'); } catch(e){ L('[结果] speak 抛异常 ✗: ' + e.message); }
+});
+</script>
+</body>
+</html>
