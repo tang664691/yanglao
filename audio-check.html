@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4ed8">
+<title>语音自检 · 安享养老</title>
+<style>
+  /* 去红铁律：本页所有提示 / 失败态一律浅蓝系（#1d4ed8 / #eff6ff / #dbeafe），零红色 */
+  :root{
+    --ink:#0f172a; --ink2:#475569; --muted:#64748b;
+    --line:#e2e8f0; --card:#ffffff; --bg:#f8fafc;
+    --blue:#1d4ed8; --blue-l:#eff6ff; --blue-l2:#dbeafe;
+    --green:#16a34a; --green-l:#f0fdf4;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    padding:16px 14px calc(28px + env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;
+  }
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px; margin:0 0 14px;
+  }
+  .card h2{font-size:16px;margin:0 0 10px;color:var(--blue);display:flex;align-items:center;gap:8px}
+  .card h2::before{content:"";width:4px;height:16px;border-radius:2px;background:var(--blue)}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:0}
+  .k{color:var(--ink2);font-size:14px;flex:0 0 auto}
+  .v{font-weight:800;font-size:15px;text-align:right;word-break:break-all}
+  .v.ok{color:var(--green)}
+  .v.no{color:var(--blue)}
+  .verdict{
+    margin:6px 0 0;padding:12px 14px;border-radius:12px;
+    background:var(--blue-l);border:1px solid var(--blue-l2);
+    color:var(--blue);font-weight:800;font-size:17px;line-height:1.5;
+  }
+  .verdict.ok{background:var(--green-l);border-color:#bbf7d0;color:var(--green)}
+  button{
+    -webkit-appearance:none;appearance:none;border:0;border-radius:12px;
+    min-height:56px;width:100%;font-size:18px;font-weight:800;
+    font-family:inherit;color:#fff;background:var(--blue);cursor:pointer;
+  }
+  button:active{opacity:.85}
+  button.ghost{background:#fff;color:var(--blue);border:2px solid var(--blue-l2)}
+  button[disabled]{background:#e2e8f0;color:#94a3b8;cursor:default}
+  .btns{display:grid;gap:10px}
+  ol.seq{list-style:none;margin:0;padding:0}
+  ol.seq li{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
+    font-size:14px;border:1px solid var(--line);margin-bottom:6px;background:#fff;
+  }
+  ol.seq li.cur{background:var(--blue-l);border-color:var(--blue-l2)}
+  ol.seq li.done{border-color:#bbf7d0;background:var(--green-l)}
+  ol.seq li.bad{background:var(--blue-l);border-color:var(--blue)}
+  .tag{
+    flex:0 0 34px;text-align:center;font-weight:800;font-size:13px;color:var(--muted);
+  }
+  .zh{flex:1 1 auto;font-weight:700}
+  .st{flex:0 0 auto;color:var(--muted);font-size:13px;font-weight:700}
+  li.done .st{color:var(--green)}
+  li.bad .st{color:var(--blue)}
+  #summary{
+    width:100%;min-height:150px;font:13px/1.5 ui-monospace,Consolas,monospace;
+    border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;color:var(--ink);
+    resize:vertical;
+  }
+  .tip{color:var(--muted);font-size:13px;margin:10px 0 0}
+  a.link{display:inline-block;margin-top:4px;color:var(--blue);font-weight:800;text-decoration:none}
+</style>
+</head>
+<body>
+
+<h1>语音自检</h1>
+<p class="sub">安享养老 · 用于确认这台手机能不能出声（本页只做检测，不改任何设置）</p>
+
+<div class="card">
+  <h2>一、这台手机支持哪些通道</h2>
+  <div id="caps"></div>
+  <div class="verdict" id="verdict">检测中…</div>
+</div>
+
+<div class="card">
+  <h2>二、实际播放测试（16 段）</h2>
+  <div class="btns">
+    <button id="btnPlay">开始逐段播放</button>
+    <button id="btnStop" class="ghost" disabled>停止</button>
+  </div>
+  <p class="tip">点上面按钮后请把手机音量调大、不要静音。每段约 0.4 秒，16 段约 10 秒播完。</p>
+  <ol class="seq" id="seq" style="margin-top:12px"></ol>
+</div>
+
+<div class="card">
+  <h2>三、把结果发回给我</h2>
+  <textarea id="summary" readonly></textarea>
+  <div class="btns" style="margin-top:10px">
+    <button id="btnCopy" class="ghost">复制检测结果</button>
+  </div>
+  <a class="link" href="./index.html">← 返回测算页</a>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var VOICE_BASE = './voice/';
+  /* 顺序：数字 0-9 → 点 → 退格 → 清零 → 确认 → 百分之 → X（与 app 内 VOICE_MAP 一一对应） */
+  var CLIPS = [
+    ['v0','零'],['v1','一'],['v2','二'],['v3','三'],['v4','四'],
+    ['v5','五'],['v6','六'],['v7','七'],['v8','八'],['v9','九'],
+    ['vdot','点'],['vdel','退格'],['vclr','清零'],['vok','确认'],['vpct','百分之'],['vx','X']
+  ];
+
+  var caps = document.getElementById('caps');
+  var verdictEl = document.getElementById('verdict');
+  var seqEl = document.getElementById('seq');
+  var btnPlay = document.getElementById('btnPlay');
+  var btnStop = document.getElementById('btnStop');
+  var btnCopy = document.getElementById('btnCopy');
+  var summary = document.getElementById('summary');
+
+  /* ---------- 能力探测（与 app 内 AUDIO_OK 判据保持一致） ---------- */
+  var caps_ = {};
+  var probe = null;
+  try { if (typeof window.Audio === 'function') probe = new window.Audio(); } catch (e) { probe = null; }
+  function cpt(t){
+    try { return (probe && typeof probe.canPlayType === 'function') ? (probe.canPlayType(t) || '') : ''; }
+    catch (e) { return ''; }
+  }
+  caps_.tts = (typeof window.speechSynthesis !== 'undefined') && (typeof window.SpeechSynthesisUtterance !== 'undefined');
+  caps_.audioCtor = (typeof window.Audio === 'function');
+  caps_.mp3 = cpt('audio/mpeg');
+  caps_.wav = cpt('audio/wav');
+  caps_.audioOK = caps_.audioCtor && caps_.mp3 !== '';
+  caps_.ua = navigator.userAgent || '';
+  caps_.dpr = window.devicePixelRatio || 1;
+  caps_.vw = window.innerWidth + '×' + window.innerHeight;
+  try {
+    caps_.activation = (navigator.userActivation)
+      ? (navigator.userActivation.isActive ? '已激活' : '未激活')
+      : '无法读取';
+  } catch (e) { caps_.activation = '无法读取'; }
+
+  function row(k, v, good){
+    var d = document.createElement('div');
+    d.className = 'row';
+    var a = document.createElement('span'); a.className = 'k'; a.textContent = k;
+    var b = document.createElement('span'); b.className = 'v ' + (good ? 'ok' : 'no');
+    b.textContent = v;
+    d.appendChild(a); d.appendChild(b);
+    caps.appendChild(d);
+  }
+  row('语音合成接口 speechSynthesis', caps_.tts ? '支持' : '不支持', caps_.tts);
+  row('音频播放接口 Audio', caps_.audioCtor ? '存在' : '不存在', caps_.audioCtor);
+  row('可播 MP3（audio/mpeg）', caps_.mp3 === '' ? '不支持' : caps_.mp3, caps_.mp3 !== '');
+  row('可播 WAV（audio/wav）', caps_.wav === '' ? '不支持' : caps_.wav, caps_.wav !== '');
+  row('屏幕 / 像素比', caps_.vw + ' · DPR ' + caps_.dpr, true);
+  row('用户手势状态', caps_.activation, true);
+
+  /* ---------- 结论 ---------- */
+  var channel;
+  if (caps_.tts) {
+    channel = '通道 ①：系统语音合成（网页文字朗读）';
+    verdictEl.className = 'verdict ok';
+  } else if (caps_.audioOK) {
+    channel = '通道 ②：随包预置音频（离线可播）';
+    verdictEl.className = 'verdict ok';
+  } else {
+    channel = '通道 ③：仅大号数字回显（无声，但看得见）';
+    verdictEl.className = 'verdict';
+  }
+  verdictEl.textContent = '本机可用：' + channel;
+
+  /* ---------- 逐段播放测试 ---------- */
+  var items = [];
+  CLIPS.forEach(function(c, i){
+    var li = document.createElement('li');
+    li.id = 'clip-' + c[0];
+    var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = (i + 1);
+    var zh = document.createElement('span'); zh.className = 'zh'; zh.textContent = c[1];
+    var st = document.createElement('span'); st.className = 'st'; st.textContent = '待播';
+    li.appendChild(tag); li.appendChild(zh); li.appendChild(st);
+    seqEl.appendChild(li);
+    items.push({ id: c[0], zh: c[1], li: li, st: st, el: null, dur: 0, done: false, err: '' });
+  });
+
+  var running = false, idx = -1, stopFlag = false;
+
+  function reset(){
+    stopFlag = true; running = false;
+    idx = -1;
+    items.forEach(function(it){
+      it.done = false; it.err = ''; it.dur = 0;
+      if (it.el) { try { it.el.pause(); } catch (e) {} }
+      it.el = null;
+      it.li.className = ''; it.st.textContent = '待播';
+    });
+    btnPlay.disabled = false; btnStop.disabled = true;
+    btnPlay.textContent = '开始逐段播放';
+  }
+
+  function playOne(i){
+    return new Promise(function(resolve){
+      var it = items[i];
+      it.li.className = 'cur'; it.st.textContent = '播放中';
+
+      if (!caps_.audioOK) {
+        it.st.textContent = '接口不支持，跳过';
+        it.li.className = 'bad'; it.err = 'canPlayType(audio/mpeg) 为空';
+        return resolve();
+      }
+
+      var el;
+      try { el = new window.Audio(VOICE_BASE + it.id + '.mp3'); }
+      catch (e) { it.st.textContent = '创建失败'; it.li.className = 'bad'; it.err = String(e); return resolve(); }
+      it.el = el;
+      el.preload = 'auto';
+
+      var settled = false;
+      function finish(ok, note){
+        if (settled) return; settled = true;
+        it.done = !!ok;
+        it.dur = (el.duration && isFinite(el.duration)) ? el.duration : 0;
+        if (ok) { it.li.className = 'done'; it.st.textContent = '完成 ' + it.dur.toFixed(2) + 's'; }
+        else { it.li.className = 'bad'; it.st.textContent = note || '失败'; it.err = note || '失败'; }
+        if (it.el) { try { it.el.pause(); } catch (e) {} it.el = null; }
+        resolve();
+      }
+
+      el.addEventListener('loadedmetadata', function(){
+        if (el.duration && isFinite(el.duration)) it.dur = el.duration;
+      });
+      el.addEventListener('ended', function(){ finish(true); });
+      el.addEventListener('error', function(){
+        var c = el.error ? (el.error.code + ':' + (el.error.message || '')) : '未知';
+        finish(false, '加载失败 ' + c);
+      });
+
+      var p;
+      try { p = el.play(); }
+      catch (e) { return finish(false, '播放被拒'); }
+      if (p && typeof p.then === 'function') {
+        p.then(function(){
+          /* 起播成功，等 ended；加一个保险超时，防止 ended 不触发一直挂着 */
+          setTimeout(function(){ if (!settled) finish(true); }, 2500);
+        }, function(err){
+          finish(false, '播放被拒 ' + ((err && err.name) || ''));
+        });
+      } else {
+        setTimeout(function(){ if (!settled) finish(true); }, 2500);
+      }
+    });
+  }
+
+  function run(){
+    reset();
+    running = true; stopFlag = false;
+    btnPlay.disabled = true; btnStop.disabled = false;
+    btnPlay.textContent = '播放中…';
+
+    var i = 0;
+    function step(){
+      if (stopFlag || i >= items.length) {
+        running = false;
+        btnPlay.disabled = false; btnStop.disabled = true;
+        btnPlay.textContent = '重新播放';
+        buildSummary();
+        return;
+      }
+      idx = i;
+      playOne(i).then(function(){
+        i++;
+        setTimeout(step, 120);
+      });
+    }
+    step();
+  }
+
+  btnPlay.addEventListener('click', run);
+  btnStop.addEventListener('click', function(){
+    stopFlag = true; running = false;
+    items.forEach(function(it){ if (it.el) { try { it.el.pause(); } catch (e) {} it.el = null; } });
+    items.forEach(function(it){
+      if (!it.done && it.st.textContent === '播放中') { it.st.textContent = '已停止'; it.li.className = ''; }
+    });
+    btnPlay.disabled = false; btnStop.disabled = true;
+    btnPlay.textContent = '重新播放';
+    buildSummary();
+  });
+
+  /* ---------- 汇总文本 ---------- */
+  function buildSummary(){
+    var total = items.length;
+    var okN = items.filter(function(it){ return it.done; }).length;
+    var badN = items.filter(function(it){ return it.err; }).length;
+    var lines = [];
+    lines.push('=== 安享养老 · 语音自检结果 ===');
+    lines.push('时间：' + new Date().toLocaleString('zh-CN'));
+    lines.push('');
+    lines.push('[能力]');
+    lines.push('speechSynthesis：' + (caps_.tts ? '支持' : '不支持'));
+    lines.push('Audio 接口：' + (caps_.audioCtor ? '存在' : '不存在'));
+    lines.push('audio/mpeg：' + (caps_.mp3 === '' ? '(空) 不支持' : caps_.mp3));
+    lines.push('audio/wav：' + (caps_.wav === '' ? '(空) 不支持' : caps_.wav));
+    lines.push('audioOK（app 判据）：' + (caps_.audioOK ? 'true' : 'false'));
+    lines.push('');
+    lines.push('[播放测试] 成功 ' + okN + ' / ' + total + (badN ? '，失败 ' + badN : ''));
+    items.forEach(function(it){
+      lines.push('  ' + it.id + ' ' + it.zh + ' → ' +
+        (it.err ? ('失败(' + it.err + ')') : (it.done ? ('完成 ' + it.dur.toFixed(2) + 's') : '未测')));
+    });
+    lines.push('');
+    lines.push('[环境]');
+    lines.push('视口：' + caps_.vw + ' · DPR ' + caps_.dpr);
+    lines.push('手势：' + caps_.activation);
+    lines.push('UA：' + caps_.ua);
+    lines.push('');
+    lines.push('结论：' + channel);
+    summary.value = lines.join('\n');
+  }
+
+  btnCopy.addEventListener('click', function(){
+    buildSummary();
+    var txt = summary.value;
+    function fallback(){ summary.focus(); summary.select(); try { document.execCommand('copy'); } catch (e) {} }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function(){
+        btnCopy.textContent = '已复制 ✓';
+        setTimeout(function(){ btnCopy.textContent = '复制检测结果'; }, 1500);
+      }, fallback);
+    } else fallback();
+  });
+
+  buildSummary();
+}());
+</script>
+</body>
+</html>
