@@ -3,7 +3,7 @@
    手机端下次打开才会自动清掉旧缓存、拉到新页面。
    只改 HTML 不改这里 → 联网时一般也能拿到新页面（HTML 走 network-first），
    但离线缓存可能仍是旧的，所以务必养成一起改的习惯。 */
-var SW_VERSION = 'v1.0.1';
+var SW_VERSION = 'v1.0.2';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
