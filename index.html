@@ -24,6 +24,13 @@
                           （voice/*.mp3 共 16 段，约 63KB，sw.js 预缓存）＋大号数字回显兜底；
                           「累计已缴时间」行改移动端三行栅格（按钮 66×39→满宽 48 高）；
                           线上版文案适配（首页徽章 / 分享提示不再引导分享 HTML 文件）
+  Phase 25    2026-09-13  首页主图本地化：原为唯一外链（豆包 CDN，625KB）→ 改为随包
+                          ./hero.jpg（960px 压缩版，86KB，sw.js 预缓存）；
+                          至此全站零外链，真正离线可用
+  Phase 26    2026-09-14  启动层（splash）：全屏品牌蓝渐变 + 内联 SVG 盾牌 +「安享养老」
+                          + 底部「数据仅存本机・测算安心」；停留 1.5s → 0.4s 淡出并移除，
+                          点击/触摸/按键任意处立即跳过；仅首次加载显示；纯视觉层，
+                          不延迟任何计算与数据加载
   ==========================================================================
   铁律：本文件是手机版唯一可改副本。每次改动前必须现做一份改前备份，
         归档于桌面「养老金_备份归档\」。
@@ -1513,9 +1520,85 @@
   .detail-fold[open]>summary::before{transform:rotate(90deg);}
   .detail-fold>summary:hover{background:#f1f5fb;}
   .detail-fold>.detail-body{padding:4px 16px 16px;border-top:1px dashed #e3e8ef;}
+
+  /* ==================================================================
+     Phase 26 · 启动层（splash）
+     ------------------------------------------------------------------
+     仅「首次加载」显示（每次文档加载一次；页面内切换 输入页 ↔ 结果页 不会重现）。
+     视觉：品牌蓝渐变全屏 + 纯白内联盾牌（对齐 icon-source.svg）+ 白色「安享养老」
+           + 底部小字「数据仅存本机・测算安心」。
+     约束：无外部图片 / CDN（盾牌为内联 SVG）；配色仅品牌蓝 #3b82f6→#1d4ed8 与白，
+           不引入任何红色系。
+     层级：z-index 取 2147483000，高于页面既有最高层（.np-pad=100000、.np-card=100001）。
+     时序：停留 1.5s → 0.4s 淡出 → 移除节点；期间点击 / 触摸 / 按键任意处立即跳过。
+     兜底：下方 keyframes 保证「脚本未执行」时也会在 1.5s 后自行淡出并让出交互，
+           不会留下遮挡元素（jsdom 下 animation 不生效但也不报错）。
+     ================================================================== */
+  .axyl-splash{
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    box-sizing:border-box;
+    padding:24px 24px 28px;
+    padding:calc(24px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+    background:#1d4ed8;
+    background:linear-gradient(160deg,#3b82f6 0%,#1d4ed8 100%);
+    color:#fff;text-align:center;
+    opacity:1;transition:opacity .4s ease;
+    -webkit-tap-highlight-color:transparent;
+    animation:axylSplashFallback 1.9s linear forwards;
+  }
+  /* 无 JS 兜底：0→78.9% 为 1.5s 停留，78.9%→100% 为 0.4s 淡出，随后不可见且不拦截交互 */
+  @keyframes axylSplashFallback{
+    0%,78.9%{ opacity:1; visibility:visible; pointer-events:auto; }
+    100%{ opacity:0; visibility:hidden; pointer-events:none; }
+  }
+  .axyl-splash.ax-out{ opacity:0; pointer-events:none; }
+  .axyl-splash.ax-gone{ display:none !important; }
+  .axyl-splash .ax-shield{
+    display:block;width:134px;height:162px;
+    filter:drop-shadow(0 8px 22px rgba(9,32,79,.28));
+  }
+  .axyl-splash .ax-title{
+    margin-top:22px;font-size:34px;font-weight:800;line-height:1.2;
+    letter-spacing:6px;text-indent:3px;   /* letter-spacing 会在末字右侧加 6px，视觉中心左偏 3px，用等量缩进抵消 */
+    color:#fff;text-shadow:0 2px 10px rgba(9,32,79,.22);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
+  }
+  .axyl-splash .ax-foot{
+    position:absolute;left:0;right:0;
+    bottom:30px;
+    bottom:calc(30px + env(safe-area-inset-bottom));
+    font-size:15px;letter-spacing:2px;color:rgba(255,255,255,.88);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
+  }
+  /* 横屏 / 矮屏：整体缩小，避免盾牌与底字重叠 */
+  @media (max-height:520px){
+    .axyl-splash .ax-shield{ width:96px;height:116px; }
+    .axyl-splash .ax-title{ margin-top:14px;font-size:26px;letter-spacing:4px;text-indent:2px; }
+    .axyl-splash .ax-foot{ bottom:16px;bottom:calc(16px + env(safe-area-inset-bottom));font-size:13px; }
+  }
 </style>
 </head>
 <body>
+
+<!-- ==================================================================
+     Phase 26 · 启动层（splash）
+     ------------------------------------------------------------------
+     仅「首次加载」显示：本节点随文档加载一次，1.5s 后 0.4s 淡出并由脚本移除，
+     页面内切换（输入页 ↔ 结果页）不会再创建它。
+     盾牌为内联 SVG（几何完全对齐养老金PWA/icon-source.svg），零外部图片 / CDN。
+     文案与配色：品牌蓝渐变 + 纯白，无红色系。
+     ================================================================== -->
+<div class="axyl-splash" id="axylSplash" role="status" aria-live="polite" aria-label="安享养老 正在启动">
+  <svg class="ax-shield" viewBox="94 64 324 384" aria-hidden="true" focusable="false">
+    <polygon points="122.88,92.16 389.12,92.16 389.12,235.52 256,419.84 122.88,235.52" fill="#ffffff"/>
+    <text x="256" y="225.28" text-anchor="middle" dominant-baseline="central"
+          font-family="Microsoft YaHei, PingFang SC, Arial, sans-serif"
+          font-size="112.64" font-weight="bold" fill="#1d4ed8">¥</text>
+  </svg>
+  <div class="ax-title">安享养老</div>
+  <div class="ax-foot">数据仅存本机・测算安心</div>
+</div>
 
 <div class="proto-banner">
   <button class="pb-toggle" id="pbToggle" title="查看工具说明">⚠</button>
@@ -1584,9 +1667,9 @@
 
   </div>
 
-  <!-- 合家欢主图 -->
+  <!-- 合家欢主图（Phase 25：已本地化，原先指向第三方 CDN 的外链） -->
   <div style="text-align:center;margin:20px auto;max-width:700px;">
-    <img src="https://aka.doubaocdn.com/s/TvF5YgP4Gg" alt="合家欢" style="width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.1);">
+    <img src="./hero.jpg" alt="合家欢" style="width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.1);">
   </div>
 
   <details class="opt-group report-set">
@@ -2585,6 +2668,55 @@
 <script>
 (function () {
   'use strict';
+
+  /* ==================================================================== */
+  /*  Phase 26 · 启动层（splash）控制                                        */
+  /*  ------------------------------------------------------------------ */
+  /*  设计要点（务必保持）：                                                */
+  /*  1. 只做三件事：读一个「已在 DOM 里」的节点、挂两个定时器、挂跳过监听。    */
+  /*     不创建、不等待、不轮询 → 主界面初始化逻辑照常并行执行，启动层不延迟    */
+  /*     任何计算 / 数据加载，只是视觉上晚 1.5s 显现。                      */
+  /*  2. 仅首次加载显示：本段只在文档解析到此处时执行一次；页面内切换          */
+  /*     （输入页 ↔ 结果页）不会重新创建启动层。                            */
+  /*  3. 降级：整段包在 try/catch 内，节点缺失时直接返回；jsdom 等环境里       */
+  /*     offsetWidth / transition 均无害，定时器只负责移除节点，不报错。      */
+  /*  4. 不要在本段引入新的自执行收尾序列，也不要在注释里写出该字符序列 ——     */
+  /*     回归 harness 用「最后一个该序列」定位主流程注入锚点，期望值恒为 4。    */
+  /* ==================================================================== */
+  try {
+    var _splashEl = document.getElementById('axylSplash');
+    if (_splashEl) {
+      var _splashDone = false;
+      var _splashSkip = function () { _splashDismiss(); };
+      var _splashDismiss = function () {
+        if (_splashDone) { return; }
+        _splashDone = true;
+        try { document.removeEventListener('keydown', _splashSkip, false); } catch (e0) {}
+        try {
+          var el = _splashEl;
+          /* 先停掉 CSS 兜底动画：动画层级高于普通声明，不停掉的话
+             .ax-out 的 opacity:0 会被 keyframes 的 opacity:1 盖住，
+             点击跳过就看不到淡出。停掉后由 transition 接管 0.4s 淡出。 */
+          el.style.animation = 'none';
+          void el.offsetWidth;              /* 强制回流，保证从「不透明」开始淡出 */
+          el.className = 'axyl-splash ax-out';
+          setTimeout(function () {
+            try {
+              el.className = 'axyl-splash ax-gone';
+              if (el.parentNode) { el.parentNode.removeChild(el); }
+            } catch (e2) {}
+          }, 400);
+        } catch (e1) {}
+      };
+      /* 点击 / 触摸 屏幕任意位置 → 立即跳过（老人不想等可以点一下直接进）。
+         keydown 也接上，方便一体机外接键盘 / 投屏遥控场景。 */
+      try { _splashEl.addEventListener('click', _splashSkip, false); } catch (e3) {}
+      try { _splashEl.addEventListener('touchstart', _splashSkip, { passive: true }); } catch (e3) {}
+      try { document.addEventListener('keydown', _splashSkip, false); } catch (e3) {}
+      /* 默认停留 1.5s 后自动淡出 */
+      setTimeout(_splashDismiss, 1500);
+    }
+  } catch (eSplash) { /* 启动层任何异常都不得影响主流程（回归 harness 与本页共享上下文） */ }
 
   // ─── 广东省双轨常量（缴费全口径 ≠ 退休计发基数，严禁互换）───
   // 集中定义，杜绝 11293/9183/9493 散落多处导致误互换错算（注：深圳 2025 缴费全口径与计发基数并轨数值同为 11293，但代码仍须用 GD_SZ_PAY_AVG / GD_SZ_PENSION_BASE 两常量区分语义，严禁串用）。
