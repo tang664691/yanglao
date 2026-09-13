@@ -20,6 +20,10 @@
   Phase 20    2026-09-12  报告页脚三行（报告编号 / 出具日期 / 生成时间）改居中
   Phase 21    2026-09-12  #heroBig 接入 P_RESULT 白名单，修「切页串页」
   Phase 23    2026-09-13  PWA 外壳（manifest + service worker 离线缓存 + 图标 + iOS meta）
+  Phase 24    2026-09-13  离线语音降级：无 speechSynthesis 的机型改用随包预置音频
+                          （voice/*.mp3 共 16 段，约 63KB，sw.js 预缓存）＋大号数字回显兜底；
+                          「累计已缴时间」行改移动端三行栅格（按钮 66×39→满宽 48 高）；
+                          线上版文案适配（首页徽章 / 分享提示不再引导分享 HTML 文件）
   ==========================================================================
   铁律：本文件是手机版唯一可改副本。每次改动前必须现做一份改前备份，
         归档于桌面「养老金_备份归档\」。
@@ -366,6 +370,50 @@
   .radio-row input{width:auto;}
   .date-row{display:flex;gap:8px;}
   .date-row input[type=number]{flex:1;min-width:0;text-align:center;}
+
+  /* 【Phase 24】「累计已缴时间」行 · 移动端三行栅格（2026-09-13）
+     问题（真实内核实测 360/390/430 三视口，非推算）：该行 6 个元素挤成 2 行 ——
+       第 1 行 = [#paid] 个月 ≈，行尾孤悬一个「≈」且右侧没有运算对象；
+       第 2 行 = [#paidYears] 年 [确认]，197+8+15+8+66 恰好顶满行宽、零余量；
+       确认按钮仅 66×39 / 字号 14px，同时低于「≥70px 宽」与「≥44px 高」双阈值。
+     单行方案在 360px 下数学上不成立：固定项 95.28px + 按钮 88px 后，
+       两个输入框各只剩约 55px（430px 也仅 90.4px），远低于 90px 可用线 → 必须 ≥2 行。
+     故改为三行栅格：月数 / 年数 / 确认按钮满宽，三个元素全部放大。
+     实现要点（两条都是踩过的坑，勿改）：
+       ① 用显式类名 .paid-row，**不用 :has()** —— 目标机是国内安卓自带浏览器，
+          内核偏老（实测连 window.speechSynthesis 都不存在），而 :has() 需 Chrome 105+，
+          选择器不被支持时会静默失效、布局毫无变化且不报错，属于最难发现的一类故障；
+       ② 三个元素与行容器**都带 inline style**，inline 优先级高于普通 class 选择器，
+          因此**仅对与 inline 冲突的属性**（min/max-width、flex、margin、gap、align-items）
+          加 !important；grid-area / width / font-size / min-height 无 inline 冲突，用普通声明即可。
+       ③ 全部规则包在既有移动端断点 max-width:768px 内 → PC 端零影响。 */
+  @media (max-width:768px){
+    .date-row.paid-row{
+      display:grid !important;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      align-items:center !important;
+      column-gap:8px !important;
+      row-gap:10px !important;
+    }
+    .date-row.paid-row > #paid{
+      grid-area:1 / 2; width:100%;
+      min-width:0 !important; max-width:none !important; flex:none !important;
+    }
+    .date-row.paid-row > #paid + span{ grid-area:1 / 3; }                 /* 「个月」 */
+    .date-row.paid-row > #paid + span + span{                             /* 「≈」 */
+      grid-area:2 / 1; margin:0 !important; color:#64748b; font-weight:700;
+    }
+    .date-row.paid-row > #paidYears{
+      grid-area:2 / 2; width:100%;
+      min-width:0 !important; max-width:none !important; flex:none !important;
+    }
+    .date-row.paid-row > #paidYears + span{ grid-area:2 / 3; }            /* 「年」 */
+    .date-row.paid-row > #btnFillPaid{                                    /* 「确认」 */
+      grid-area:3 / 1 / 4 / 4; width:100%;
+      min-height:48px; font-size:17px;
+      margin:6px 0 0 !important;
+    }
+  }
 
   /* 机关基本信息：双栏卡片布局（左身份证 / 右手动输入） */
   .gov-basic-banner{
@@ -1512,7 +1560,7 @@
     <div class="start-badge">安</div>
     <div class="start-title">安享养老</div>
     <div class="start-sub">养老保险测算工具 · 算清退休账 · 政策同步 · 合规参考</div>
-    <div class="start-pill">数据本地计算 · 安全不泄露</div>
+    <div class="start-pill">测算在本地完成 · 数据不上传</div>
 
     <!-- 信任数据条 -->
     <div class="trust-bar" style="display:flex;justify-content:center;gap:28px;margin:14px 0 6px 0;flex-wrap:wrap;">
@@ -1767,7 +1815,7 @@
           </div>
           <div class="field full">
             <label for="paid">累计已缴时间（截至当前）</label>
-            <div class="date-row" style="align-items:center;flex-wrap:wrap;gap:8px;">
+            <div class="date-row paid-row" style="align-items:center;flex-wrap:wrap;gap:8px;">
               <input type="number" id="paid" min="0" max="720" placeholder="个月" style="min-width:170px;max-width:280px;flex:2 1 200px;">
               <span style="color:#555;font-weight:700;">个月</span>
               <span style="color:#999;margin:0 4px;">≈</span>
@@ -10738,7 +10786,7 @@
     toast(on ? '已切换到大字号' : '已恢复标准字号');
   });
   _ft('ftShare', function () {
-    toast('测算模型为单文件离线页面，直接分享本 HTML 文件即可，数据不上传。');
+    toast('测算在您设备本地完成，数据不上传；分享给亲友请直接发送本网页链接。');
   });
   _ft('ftPrint', function () {
     toast('生成服务凭证，可另存为 PDF');
@@ -11622,16 +11670,154 @@
       document.addEventListener('keydown', unlockOnce, true);
     } catch (e) {}
   }
-  function speak(text, interrupt) {
-    if (!TTS_OK || !text) return;
+  /* ---------- 【Phase 24】离线音频播报 + 大号数字回显（TTS 缺失时的降级通道） ----------
+     为什么需要：用户手机的国产安卓自带浏览器实测**根本没有** window.speechSynthesis
+       （检测页 tts-check.html 报「语音合成接口：不支持」），网页代码层面无解，
+       而身份证逐键语音播报是老年用户刚需。故改走「随包分发的预置音频」：
+       16 段中文播报（0-9 / 点 / 退格 / 清零 / 确认 / 百分之 / 艾克斯），
+       44.1kHz 单声道 MP3，合计约 63KB，由 sw.js 预缓存 → 离线可播、零外网依赖。
+     三层降级策略（互不干扰，逐层兜底）：
+       ① 有 speechSynthesis → 沿用原通道（音质更好，iOS/桌面端走这条，行为零变化）；
+       ② 无 speechSynthesis   → 播预置音频；
+       ③ 连音频也放不出来     → 叠加「大号数字回显」，静音/外放被关时仍能逐位核对。
+     两个踩过的坑，勿改：
+       · AUDIO_OK 用 canPlayType('audio/mpeg') 探测，而不是只判断 Audio 是否存在。
+         jsdom（回归 harness 的运行环境）有 HTMLMediaElement 空壳，play() 一调就抛
+         "Not implemented"，会被 phase0_regress 记成「运行期错误」；而 jsdom 的
+         canPlayType 恒返回空串，正好用它把「真浏览器」和「jsdom 空壳」区分开。
+         顺带还真实校验了 MP3 可播性——放不了 MP3 就只走回显。
+       · 音频元素与队列都做惰性创建 + 全程 try/catch：任何异常都必须静默降级，
+         绝不能影响按键写入、跳格、校验等既有功能。 */
+  var VOICE_BASE = './voice/';
+  var VOICE_MAP = {
+    '零': 'v0', '一': 'v1', '二': 'v2', '三': 'v3', '四': 'v4',
+    '五': 'v5', '六': 'v6', '七': 'v7', '八': 'v8', '九': 'v9',
+    '点': 'vdot', '退格': 'vdel', '清零': 'vclr', '确认': 'vok', '百分之': 'vpct', 'X': 'vx'
+  };
+  /* 回显用的短符号：中文词回显成符号，看着才不啰嗦 */
+  var ECHO_MAP = {
+    '零': '0', '一': '1', '二': '2', '三': '3', '四': '4',
+    '五': '5', '六': '6', '七': '7', '八': '8', '九': '9',
+    '点': '.', '退格': '⌫', '清零': '清零', '确认': '确认', '百分之': '%', 'X': 'X'
+  };
+  /* 刻意**不**采用「函数表达式立即调用」的写法（即那种以 括号-括号-分号 三连收尾的
+     自执行包装）来包这段探测：那三个字符组成的收尾序列在本文件里必须恒为 4 处 ——
+     回归 harness（probe_mobtab / probe_reveal）用 lastIndexOf 定位主 IIFE 的注入锚点，
+     多出一处就会把钩子注入到错误位置，导致整套回归全红（注释里写出该字面量同样会中招）。
+     故此处改写为「外层变量 + try 赋值」，既等价又不动计数。 */
+  var AUDIO_OK = false;
+  try {
+    if (typeof window.Audio === 'function') {
+      var audioProbe = new window.Audio();
+      /* jsdom 的 canPlayType 恒返回 ''，真浏览器对 audio/mpeg 至少返回 'maybe'。
+         用它可以一并完成两件事：区分「真浏览器 / jsdom 空壳」、确认真能放 MP3。 */
+      AUDIO_OK = typeof audioProbe.play === 'function' &&
+        !!(audioProbe.canPlayType && audioProbe.canPlayType('audio/mpeg') !== '');
+    }
+  } catch (e) { AUDIO_OK = false; }
+  var voiceEls = {};
+  var voiceQ = [];
+  var voiceBusy = false;
+
+  function voiceEl(name) {
+    if (voiceEls[name]) return voiceEls[name];
+    var el = null;
     try {
-      var ss = window.speechSynthesis;
-      if (interrupt && ss.cancel) { try { ss.cancel(); } catch (e) {} }
-      var u = new window.SpeechSynthesisUtterance(text);
-      u.lang = 'zh-CN'; u.rate = 1.4; u.pitch = 1;
-      if (zhVoice) u.voice = zhVoice;
-      ss.speak(u);
+      el = new window.Audio(VOICE_BASE + name + '.mp3');
+      el.preload = 'auto';
+      voiceEls[name] = el;
+    } catch (e) { el = null; }
+    return el;
+  }
+
+  /* 顺序播完一段再放下一段（数字连按时不互相截断，逐个听得清）。
+     退格 / 确认走 interrupt=true：清空队列并立刻打断当前播放，反馈干脆。 */
+  function drainVoiceQ() {
+    if (voiceBusy) return;
+    var name = voiceQ.shift();
+    if (!name) return;
+    var el = voiceEl(name);
+    if (!el) { voiceQ.length = 0; return; }
+    voiceBusy = true;
+    var done = false;
+    var finish = function () {
+      if (done) return;
+      done = true;
+      voiceBusy = false;
+      drainVoiceQ();
+    };
+    try {
+      el.onended = finish;
+      el.onerror = finish;
+      el.currentTime = 0;
     } catch (e) {}
+    var pr = null;
+    try { pr = el.play(); } catch (e) { finish(); return; }
+    if (pr && typeof pr.then === 'function') { pr.then(function () {}, function () { finish(); }); }
+  }
+
+  function playVoice(text, interrupt) {
+    var name = VOICE_MAP[text];
+    if (!name || !AUDIO_OK) return;
+    if (interrupt) {
+      voiceQ.length = 0;
+      for (var k in voiceEls) {
+        if (Object.prototype.hasOwnProperty.call(voiceEls, k)) {
+          try { voiceEls[k].pause(); } catch (e) {}
+        }
+      }
+      voiceBusy = false;
+    }
+    voiceQ.push(name);
+    drainVoiceQ();
+  }
+
+  /* 大号数字回显：贴在数字键盘「正上方」。用键盘实时 rect 定位，
+     不依赖任何固定高度常量，键盘高度以后变了也不会错位。浅蓝配色，符合去红铁律。 */
+  var echoEl = null;
+  var echoTimer = 0;
+  function showEcho(text) {
+    try {
+      if (echoEl && !echoEl.parentNode) echoEl = null;
+      if (!echoEl) {
+        echoEl = document.createElement('div');
+        echoEl.setAttribute('aria-hidden', 'true');
+        echoEl.style.cssText =
+          'position:fixed;left:50%;z-index:99998;pointer-events:none;opacity:0;' +
+          'transition:opacity .12s linear;background:#eff6ff;border:2px solid #1d4ed8;' +
+          'color:#1d4ed8;border-radius:12px;padding:4px 20px;font-size:30px;' +
+          'font-weight:900;line-height:1.25;box-shadow:0 6px 18px rgba(29,78,216,.18);';
+        document.body.appendChild(echoEl);
+      }
+      var padRect = pad && pad.getBoundingClientRect ? pad.getBoundingClientRect() : null;
+      var top = padRect && padRect.top ? (padRect.top - 54) : 90;
+      if (top < 8) top = 8;
+      echoEl.style.top = top + 'px';
+      echoEl.textContent = ECHO_MAP[text] || text;
+      echoEl.style.opacity = '1';
+      if (echoTimer) { clearTimeout(echoTimer); }
+      echoTimer = setTimeout(function () {
+        try { echoEl.style.opacity = '0'; } catch (e) {}
+      }, 1100);
+    } catch (e) {}
+  }
+
+  function speak(text, interrupt) {
+    if (!text) return;
+    if (TTS_OK) {
+      try {
+        var ss = window.speechSynthesis;
+        if (interrupt && ss.cancel) { try { ss.cancel(); } catch (e) {} }
+        var u = new window.SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = 1.4; u.pitch = 1;
+        if (zhVoice) u.voice = zhVoice;
+        ss.speak(u);
+      } catch (e) {}
+      return;
+    }
+    /* 降级通道：预置音频 + 大号回显（回显保证「静音/外放关掉」时仍能逐位核对） */
+    showEcho(text);
+    playVoice(text, interrupt);
   }
 
   function isMobile() {
