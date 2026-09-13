@@ -11584,13 +11584,52 @@
      不支持 TTS 的环境（含回归 harness 的 jsdom）自动静默降级，功能零影响。 */
   var TTS_OK = !!(window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function');
   var CN_KEY = { '0':'零','1':'一','2':'二','3':'三','4':'四','5':'五','6':'六','7':'七','8':'八','9':'九','.':'点','X':'X','%':'百分之' };
+  /* —— TTS 增强（兼容 Chrome / 新内核浏览器）——
+     ① 中文语音选择：getVoices 首次调用可能为空，voiceschanged 后再取；
+     ② 首次交互解锁：Chrome 等新内核限制「无用户操作前不得发声」，
+        在首次点击/触摸/按键时执行一次解锁播报，之后正常朗读。
+     任何异常都静默降级，不影响既有功能。 */
+  var zhVoice = null;
+  var ttsUnlocked = false;
+  function pickZhVoice() {
+    try {
+      var vs = window.speechSynthesis.getVoices();
+      for (var i = 0; i < vs.length; i++) {
+        var v = vs[i];
+        if (v && v.lang && String(v.lang).toLowerCase().indexOf('zh') === 0) { zhVoice = v; return; }
+      }
+    } catch (e) {}
+  }
+  function unlockTTS() {
+    if (!TTS_OK || ttsUnlocked) return;
+    ttsUnlocked = true;
+    try {
+      var ss = window.speechSynthesis;
+      if (ss.paused && typeof ss.resume === 'function') ss.resume();
+      var u = new window.SpeechSynthesisUtterance(' ');
+      u.lang = 'zh-CN'; u.volume = 0; u.rate = 1;
+      if (zhVoice) u.voice = zhVoice;
+      ss.speak(u);
+    } catch (e) {}
+  }
+  if (TTS_OK) {
+    pickZhVoice();
+    try { window.speechSynthesis.onvoiceschanged = function () { pickZhVoice(); }; } catch (e) {}
+    try {
+      var unlockOnce = function () { unlockTTS(); };
+      document.addEventListener('pointerdown', unlockOnce, true);
+      document.addEventListener('touchstart', unlockOnce, true);
+      document.addEventListener('keydown', unlockOnce, true);
+    } catch (e) {}
+  }
   function speak(text, interrupt) {
     if (!TTS_OK || !text) return;
     try {
       var ss = window.speechSynthesis;
-      if (interrupt && ss.cancel) ss.cancel();
+      if (interrupt && ss.cancel) { try { ss.cancel(); } catch (e) {} }
       var u = new window.SpeechSynthesisUtterance(text);
       u.lang = 'zh-CN'; u.rate = 1.4; u.pitch = 1;
+      if (zhVoice) u.voice = zhVoice;
       ss.speak(u);
     } catch (e) {}
   }
