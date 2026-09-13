@@ -3,7 +3,7 @@
    手机端下次打开才会自动清掉旧缓存、拉到新页面。
    只改 HTML 不改这里 → 联网时一般也能拿到新页面（HTML 走 network-first），
    但离线缓存可能仍是旧的，所以务必养成一起改的习惯。 */
-var SW_VERSION = 'v1.0.2';
+var SW_VERSION = 'v1.0.3';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
@@ -15,7 +15,26 @@ var PRECACHE = [
   './icon-192.png',
   './icon-512.png',
   './icon-512-maskable.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  /* Phase 24：离线语音播报资产（16 段，合计约 63KB）。
+     必须预缓存 —— 目标机的自带浏览器没有 speechSynthesis，身份证逐键播报
+     完全依赖这批音频；只做「按需缓存」会导致首次离线打开时静音。 */
+  './voice/v0.mp3',
+  './voice/v1.mp3',
+  './voice/v2.mp3',
+  './voice/v3.mp3',
+  './voice/v4.mp3',
+  './voice/v5.mp3',
+  './voice/v6.mp3',
+  './voice/v7.mp3',
+  './voice/v8.mp3',
+  './voice/v9.mp3',
+  './voice/vdot.mp3',
+  './voice/vdel.mp3',
+  './voice/vclr.mp3',
+  './voice/vok.mp3',
+  './voice/vpct.mp3',
+  './voice/vx.mp3'
 ];
 
 /* 离线兜底页（浅蓝配色，无红色，中文；仅在断网且无缓存时显示） */
