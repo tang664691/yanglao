@@ -1398,6 +1398,19 @@
      ==================================================================== */
   #mobTabBar, .mt-ghd { display: none; }
 
+  /* ---- 【Ph30】右上角「上一步」悬浮按钮：仅手机端显示，首页自动隐藏 ---- */
+  #btnGoBack{
+    display:none; position:fixed; top:calc(env(safe-area-inset-top) + 8px);
+    right:10px; z-index:9100;
+    padding:8px 14px; border:2px solid #2563eb; border-radius:999px;
+    background:#eff6ff; color:#1d4ed8; font-size:14px; font-weight:800;
+    font-family:inherit; line-height:1.2; cursor:pointer;
+    box-shadow:0 2px 6px rgba(37,99,235,.18);
+    -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none;
+  }
+  #btnGoBack:active{ background:#dbeafe; }
+  body.mt-tab-on #btnGoBack{ top:calc(env(safe-area-inset-top) + 54px); }
+
   @media (max-width:768px){
     /* ---- 顶部页签栏：仅 .is-on 时显示（JS 在职工输入页/结果页且非机关流程时加） ---- */
     #mobTabBar.is-on{
@@ -1570,6 +1583,10 @@
     bottom:calc(30px + env(safe-area-inset-bottom));
     font-size:15px;letter-spacing:2px;color:rgba(255,255,255,.88);
     font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
+  }
+  /* 【Ph30】PC 端（>768px）强制隐藏上一步按钮（压过 JS 的 inline display） */
+  @media (min-width:769px){
+    #btnGoBack{ display:none !important; }
   }
   /* 横屏 / 矮屏：整体缩小，避免盾牌与底字重叠 */
   @media (max-height:520px){
@@ -2673,6 +2690,7 @@
      注意：本段不得写出回归校验用的自执行收尾字符序列，也不要新增 IIFE。
      ================================================================== -->
 <div id="globalDisclaimer" style="padding:18px 16px 30px;text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;">【免责声明】本测算基于当前规则与输入值，历史加权平均指数及最终待遇受早年低档、视同缴费、异地转入等影响，均以社保经办机构最终核定为准。</div>
+<button type="button" id="btnGoBack" aria-label="返回上一页">← 上一步</button>
 
 <!-- 悬浮工具条 -->
 
@@ -6711,6 +6729,8 @@
 
   var PAGES = ['page-home', 'page-input', 'page-result', 'page-plan', 'page-compare'];
   var STEP_PAGES = ['page-input', 'page-result', 'page-plan'];
+  var _pageHistory = [];         /* 【Ph30】页面导航历史栈（纯展示层，供右上角「上一步」回退） */
+  var _suppressBackPush = false; /* 回退内部调用 showPage 时不重复压栈 */
   /** 当前步骤索引（0=输入 1=结果 2=规划），用于同步步骤条状态 */
   var curStepIdx = 0;
 
@@ -6755,6 +6775,17 @@
 
   /** 切换页面。 */
   function showPage(id) {
+    /* 【Ph30】导航历史：回首页 = 清栈（流程重置）；其余页面切换时把当前可见页压栈 */
+    if (id === 'page-home') {
+      _pageHistory.length = 0;
+    } else if (!_suppressBackPush) {
+      var _curEl = document.querySelector('.page.show');
+      var _curId = _curEl ? _curEl.id : '';
+      if (_curId && _curId !== id && PAGES.indexOf(_curId) >= 0) {
+        _pageHistory.push(_curId);
+        if (_pageHistory.length > 30) _pageHistory.shift();
+      }
+    }
     for (var i = 0; i < PAGES.length; i += 1) {
       var el = $(PAGES[i]);
       if (!el) continue;
@@ -6769,7 +6800,22 @@
       var pp = $('planPlanner');
       if (pp) pp.style.display = '';
     }
+    updateBackBtn(id);
     window.scrollTo(0, 0);
+  }
+
+  /** 【Ph30】右上角「上一步」按钮显隐：非首页且历史栈非空才显示。 */
+  function updateBackBtn(id) {
+    var b = $('btnGoBack');
+    if (!b) return;
+    b.style.display = (id !== 'page-home' && _pageHistory.length > 0) ? 'block' : 'none';
+  }
+  /** 【Ph30】回退：弹出历史栈顶并直接切页（不重算、不重置 → 表单数据零丢失）。 */
+  function goBackPage() {
+    if (!_pageHistory.length) return;
+    var prev = _pageHistory.pop();
+    _suppressBackPush = true;
+    try { showPage(prev); } finally { _suppressBackPush = false; }
   }
 
   /** 跳转到步骤 i（0 输入 / 1 结果 / 2 规划 / 3 复合参保）。 */
@@ -7977,12 +8023,20 @@
           if (cities) {
             var cp = CITY_PARAMS[prov];
             for (var c in cities) {
-              var labelVal = (cp && cp[c] && cp[c].pensionBase) ? cp[c].pensionBase : cities[c];
-              cityItemList.push({
-                text: c + "（计发基数 " + labelVal.toLocaleString() + "）",
-                value: c,
-                disabled: (mode === 'partial' && c !== allowCity)
-              });
+              // partial 模式（浙江/福建）下不可选的地市：只渲染城市名，不暴露 CITY_DATA 参考数字
+              // —— 该数字仅为城镇非私营工资推算值，非养老官方计发/缴费基数，
+              //    展示会让用户误以为系统已存有该市独立基数却被锁死。
+              var partialDisabled = (mode === 'partial' && c !== allowCity);
+              if (partialDisabled) {
+                cityItemList.push({ text: c, value: c, disabled: true });
+              } else {
+                var labelVal = (cp && cp[c] && cp[c].pensionBase) ? cp[c].pensionBase : cities[c];
+                cityItemList.push({
+                  text: c + "（计发基数 " + labelVal.toLocaleString() + "）",
+                  value: c,
+                  disabled: false
+                });
+              }
             }
           }
           if (mode === 'partial' && allowCity) {
@@ -8274,6 +8328,7 @@
     state.computedOnce = false;
     toast('已清空所有输入');
   });
+  if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
   $('btnBackHome').addEventListener('click', function () { showPage('page-home'); });
   if ($('btnBackHome2')) $('btnBackHome2').addEventListener('click', function () { showPage('page-home'); });
   if ($('btnBackBasic')) $('btnBackBasic').addEventListener('click', function () { showInputPane('pane-basic'); });
