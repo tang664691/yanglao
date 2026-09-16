@@ -1,9 +1,9 @@
-/* ★★★ 更新说明（每次改完养老金.html 必读）★★★
+﻿/* ★★★ 更新说明（每次改完养老金.html 必读）★★★
    改完 HTML 后，请把下面的 SW_VERSION 改成新版本号（例如 v1.0.0 → v1.0.1），
    手机端下次打开才会自动清掉旧缓存、拉到新页面。
    只改 HTML 不改这里 → 联网时一般也能拿到新页面（HTML 走 network-first），
    但离线缓存可能仍是旧的，所以务必养成一起改的习惯。 */
-var SW_VERSION = 'v1.0.20';
+var SW_VERSION = 'v1.0.19';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
