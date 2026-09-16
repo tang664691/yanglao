@@ -1829,6 +1829,9 @@
 
     <div id="formErr" class="calc-error"></div>
 
+    <!-- 【需求B】性别必选提示条：位于职工板块锁定区之外；只读取 #genderRow 选中态，不修改锁定区内容 -->
+    <div id="genderNeedHint" style="display:none;background:#eff6ff;border:1px solid #dbeafe;color:#1d4ed8;font-size:14px;border-radius:8px;padding:8px 12px;margin-bottom:12px;">提示：「性别」为必选项，请先选择，避免填完才发现漏填。</div>
+
     <!-- 🔒 职工板块锁定区（HTML 表单）·未经用户「改职工板块」明确指令，AI 不得修改本区块 -->
     <div id="enterpriseForm">
     <!-- ---------- 页签①：基本信息 ---------- -->
@@ -6841,7 +6844,10 @@
     } else if (!_suppressBackPush) {
       var _curEl = document.querySelector('.page.show');
       var _curId = _curEl ? _curEl.id : '';
-      if (_curId && _curId !== id && PAGES.indexOf(_curId) >= 0) {
+      /* 【BugFix】page-home 永不入栈：首页不是表单步骤，若把它压栈，
+         「← 上一步」会退化成「返回首页」（用户报的按钮职责混淆）。
+         回首页仅由左上角「← 返回首页」负责（showPage('page-home') 会清栈）。 */
+      if (_curId && _curId !== id && _curId !== 'page-home' && PAGES.indexOf(_curId) >= 0) {
         _pageHistory.push(_curId);
         if (_pageHistory.length > 30) _pageHistory.shift();
       }
@@ -6861,6 +6867,7 @@
       if (pp) pp.style.display = '';
     }
     updateBackBtn(id);
+    try { refreshGenderNeedHint(); } catch (e) {}
     window.scrollTo(0, 0);
   }
 
@@ -6907,6 +6914,7 @@
       if (panes[j] === paneId) p.classList.add('show');
       else p.classList.remove('show');
     }
+    try { refreshGenderNeedHint(); } catch (e) {}
   }
 
   /** 展开 / 收起精准反推面板。 */
@@ -8414,6 +8422,115 @@
     }(inputTabs[t]));
   }
 
+  /* ==================================================================== */
+  /*  【需求A】返回首页二次确认弹窗   【需求B】性别必选提示条（2026-09-16）    */
+  /*  ------------------------------------------------------------------ */
+  /*  需求A：全部返回首页入口（企业输入页 / 机关 / 职业 / 对比）统一走          */
+  /*        「确认 → 放弃才导航并清空」，弹窗复用通用容器 wbModalOverlay；      */
+  /*        去红铁律：弹窗内不出现任何红色（主按钮浅蓝 #1d4ed8 + 白字，        */
+  /*        次按钮白底 + 浅蓝边字）。                                          */
+  /*  需求B：性别必选提示条，仅读取锁定区状态，不修改锁定区 DOM 内容。          */
+  /* ==================================================================== */
+
+  /**
+   * 【需求B】刷新「性别必选」提示条的显隐。
+   * 显示条件：page-input 为当前页 且 企业表单（#enterpriseForm）可见 且
+   *          身份类别非 GOV 且 #genderRow 内没有任何 radio 被选中。
+   * @return {boolean} 提示条是否显示
+   */
+  function refreshGenderNeedHint() {
+    var hint = $('genderNeedHint');
+    if (!hint) return false;
+    var show = false;
+    try {
+      var curEl = document.querySelector('.page.show');
+      var onInput = !!curEl && curEl.id === 'page-input';
+      var ef = $('enterpriseForm');
+      var efVisible = !!ef && getComputedStyle(ef).display !== 'none';
+      var catSel = $('category');
+      var isGov = false;
+      if (catSel && typeof CATEGORIES !== 'undefined' && CATEGORIES[catSel.value]) {
+        isGov = !!CATEGORIES[catSel.value].gov;
+      }
+      var anyGender = false;
+      var gr = $('genderRow');
+      if (gr) {
+        var radios = gr.querySelectorAll('input[name="gender"]');
+        for (var i = 0; i < radios.length; i += 1) {
+          if (radios[i].checked) { anyGender = true; break; }
+        }
+      }
+      show = onInput && efVisible && !isGov && !anyGender;
+    } catch (e) { show = false; }
+    hint.style.display = show ? 'block' : 'none';
+    return show;
+  }
+
+  /**
+   * 【需求A】把录入区整体复位为「空白态」。
+   * 基础部分与 init() 原「空白态」序列逐条一致（blankInitForm → 性别 → 解锁 → 遮罩），
+   * 供 init() 与弹窗「放弃并返回」共用，避免手搓清空导致漏字段。
+   * @param {boolean=} full 是否执行「彻底清空」：
+   *        false = init 加载时的最小空白态（与原加载行为逐字一致）；
+   *        true  = 弹窗「放弃并返回」使用，额外清空结果页缴费数据（省份走应用自身的
+   *                「点击即清空」以同步省/市/参数提示/计发基数）、规划页与对比页，
+   *                并复位机关身份证录入态与测算状态。
+   */
+  function resetFormToBlank(full) {
+    blankInitForm('enterpriseForm');
+    blankInitForm('govForm');
+    state.gender = '';
+    setBirthLocked(false);
+    ensureTimeFieldsEditable();
+    state.basicLocked = false;
+    var ov = $('basicLockOverlay');
+    if (ov) ov.classList.remove('active');
+    if (full) {
+      // 缴费数据（page-result）：省份先走应用自身的「点击即清空」（同时复位省/市/参数提示/计发基数）
+      try {
+        var pv = $('avgSalaryProv');
+        if (pv && !pv.readOnly && pv.value && pv.value.trim()) pv.click();
+      } catch (e) {}
+      blankInitForm('page-result');
+      blankInitForm('page-plan');
+      blankInitForm('page-compare');
+      try { resetGovIdEntry(); } catch (e) {}
+      state.computedOnce = false;
+      state.pmOverrideAge = null;
+    }
+  }
+
+  /** 【需求A】打开「返回首页」二次确认弹窗（真实 DOM 弹窗，按用户要求每次必弹）。 */
+  function openBackHomeConfirm() {
+    var html =
+      '<div style="padding:20px;">'
+      + '<div style="font-size:18px;font-weight:800;color:#1d4ed8;margin-bottom:10px;">确定放弃本次填写并返回首页？</div>'
+      + '<div style="font-size:14px;color:#334155;line-height:1.7;margin-bottom:18px;">返回首页将放弃当前填写，已填写的资料将被清空。</div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end;">'
+      + '<button type="button" id="bhStayBtn" onclick="window.__backHomeStay()" style="padding:10px 18px;font-size:14px;font-weight:700;color:#1d4ed8;background:#fff;border:1.5px solid #dbeafe;border-radius:8px;cursor:pointer;">继续填写</button>'
+      + '<button type="button" id="bhDiscardBtn" onclick="window.__backHomeDiscard()" style="padding:10px 18px;font-size:14px;font-weight:700;color:#fff;background:#1d4ed8;border:none;border-radius:8px;cursor:pointer;">放弃并返回</button>'
+      + '</div></div>';
+    wbOpenModal(html);
+  }
+
+  /** 弹窗【继续填写】：仅关闭弹窗，停留在当前页面，表单数据不变。 */
+  window.__backHomeStay = function () { wbCloseModal(); };
+
+  /** 弹窗【放弃并返回】：复用空白态复位清空录入后回到首页。 */
+  window.__backHomeDiscard = function () {
+    wbCloseModal();
+    resetFormToBlank(true);
+    try { recompute(); } catch (e) {}
+    try { updateCategoryHint(); } catch (e) {}
+    showPage('page-home');
+  };
+
+  /* 仅供真实 Blink 探针直接驱动 / 只读诊断（不参与业务逻辑） */
+  window.__refreshGenderNeedHint = refreshGenderNeedHint;
+  window.__resetFormToBlank = resetFormToBlank;
+  window.__openBackHomeConfirm = openBackHomeConfirm;
+  window.__appState = state;
+
   // ---- 主要按钮 ----
   $('btnConfirm').addEventListener('click', submitForm);
   if ($('btnConfirm2')) $('btnConfirm2').addEventListener('click', submitForm);
@@ -8429,8 +8546,8 @@
     toast('已清空所有输入');
   });
   if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
-  $('btnBackHome').addEventListener('click', function () { showPage('page-home'); });
-  if ($('btnBackHome2')) $('btnBackHome2').addEventListener('click', function () { showPage('page-home'); });
+  $('btnBackHome').addEventListener('click', openBackHomeConfirm);
+  if ($('btnBackHome2')) $('btnBackHome2').addEventListener('click', openBackHomeConfirm);
   if ($('btnBackBasic')) $('btnBackBasic').addEventListener('click', function () { showInputPane('pane-basic'); });
   if ($('btnBackInput')) $('btnBackInput').addEventListener('click', function () { showPage('page-input'); });
   if ($('btnGoPlan')) $('btnGoPlan').addEventListener('click', function () {
@@ -8442,8 +8559,8 @@
     recompute(); showPage('page-plan');
   });
   $('btnBackResult').addEventListener('click', function () { recompute(); showPage('page-result'); });
-  if ($('btnBackHomeCareer')) $('btnBackHomeCareer').addEventListener('click', function () { showPage('page-home'); });
-  if ($('btnBackHomeCompare')) $('btnBackHomeCompare').addEventListener('click', function () { showPage('page-home'); });
+  if ($('btnBackHomeCareer')) $('btnBackHomeCareer').addEventListener('click', openBackHomeConfirm);
+  if ($('btnBackHomeCompare')) $('btnBackHomeCompare').addEventListener('click', openBackHomeConfirm);
   // 结果页「重新测算」按钮：校验缴费数据 → 完整模式重算
   if ($('btnRecalc')) $('btnRecalc').addEventListener('click', function () {
     var f = readForm();
@@ -9275,6 +9392,7 @@
     while (el && el !== this && !el.getAttribute('data-gender')) el = el.parentNode;
     if (!el || el === this) return;
     setGender(el.getAttribute('data-gender'), false);
+    try { refreshGenderNeedHint(); } catch (e) {}
   });
 
   // ---- 身份证 ----
@@ -9642,6 +9760,8 @@
     var printDisclaimer = document.querySelector('.print-disclaimer');
     if (btnBackHome) btnBackHome.style.display = cat.gov ? 'none' : '';
     if (printDisclaimer) printDisclaimer.style.display = cat.gov ? 'none' : '';
+    // 【需求B】身份类别切换后同步刷新「性别必选」提示条
+    try { refreshGenderNeedHint(); } catch (e) {}
   }
 
   // 切换身份类别时同步更新提示文案
@@ -11410,14 +11530,9 @@
     bindAdminMode();
 
     // ★ 用户要求：每次打开页面输入框都是空白，不恢复任何缓存/默认值
-    blankInitForm('enterpriseForm');
-    blankInitForm('govForm');
-    // 性别状态重置为未选择（blankInitForm 已清空单选）
-    state.gender = '';
-    setBirthLocked(false);
-    ensureTimeFieldsEditable();
-    state.basicLocked = false;
-    $('basicLockOverlay').classList.remove('active'); // 遮罩默认关闭，绝不挡输入
+    //   空白态复位统一收敛到 resetFormToBlank(false)（与弹窗「放弃并返回」共用同一逻辑；
+    //   false = 不额外复位机关身份证录入态，保持原加载行为逐字不变）
+    resetFormToBlank(false);
     recompute();
     updateCategoryHint();
     // 不再自动反推：恢复录入态时严格保持原样，三个时间互不自动推算；
