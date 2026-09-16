@@ -536,7 +536,10 @@
   .result-table-wrap{margin-top:14px;border:3px solid #000;border-radius:8px;overflow:hidden;background:#fff;}
   .result-table-title{font-size:20px;font-weight:900;color:#000;padding:12px 16px;background:#f5f7fa;border-bottom:1px solid #9ca3af;letter-spacing:.5px;text-align:center;}
   #resTableWrap .rt-row{display:flex;align-items:stretch;border-bottom:2px solid #000;background:#ffffff;}
-  #resTableWrap .rt-row:last-child{border-bottom:none;}
+  /* 2026-09-16：末行原为 border-bottom:none（当时黑框紧贴表格，靠外框封底）。
+     现 #resultTableSection 同时承载 CTA／退休时点／月领明细等多页签子块，外框不再紧贴表格，
+     导致末行「断缴月数」下方缺线、与下方 CTA 文案贴连 → 末行恢复底线，让表格自成一封闭框。 */
+  #resTableWrap .rt-row:last-child{border-bottom:2px solid #000;}
   #resTableWrap .rt-row .rt-k{flex:0 0 42%;min-width:160px;padding:12px 14px;background:#ffffff;border-right:2px solid #000;color:#000;font-weight:900;font-size:18px;display:flex;align-items:center;justify-content:center;text-align:center;}
   #resTableWrap .rt-row .rt-v{flex:1;padding:11px 14px;font-weight:900;font-size:18px;color:#000;display:flex;align-items:center;justify-content:center;text-align:center;background:#ffffff;}
   #resTableWrap .rt-row.is-flex .rt-v{color:#1e293b;background:#ffffff;}
@@ -634,14 +637,17 @@
   details.result-row-toggle.result-final > summary > .v{color:#16a34a;font-weight:900;font-size:22px;}
   .gov-row-tip{font-size:15px;font-weight:600;color:#1f2d3d;margin:8px 2px 0;line-height:1.7;}
 
-  /* 计发月数查表下拉框：置于「个人账户养老金」结果行旁，便于律师向客户讲解 */
+  /* 计发月数控件：置于「个人账户养老金」结果行旁。可手动锁定某年龄的官方计发月数（覆盖系统插值），
+     供律师与客户面对面做多套退休年龄方案试算对比。 */
   .pm-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;}
   .pm-lookup{display:inline-flex;flex-direction:column;align-items:center;gap:3px;
     font-size:12px;font-weight:700;color:#000;line-height:1.3;}
   .pm-lookup .pm-lbl{color:#000;white-space:nowrap;}
   .pm-lookup select{font-size:12px;font-weight:700;color:#000;background:#fff;border:1px solid #000;
-    border-radius:0;padding:2px 4px;cursor:pointer;}
+    border-radius:0;padding:2px 4px;cursor:pointer;max-width:250px;}
   .pm-lookup .pm-now{font-size:11px;font-weight:600;color:#475569;}
+  .pm-lookup .pm-tip{font-size:11px;font-weight:600;color:#1d4ed8;max-width:210px;text-align:center;line-height:1.35;}
+  .pm-lookup .pm-tip.is-lock{color:#000;}
 
   /* ===== 企业侧待遇估算：结果行容器（复用上方 details.result-row-toggle，与机关侧同一套样式） ===== */
   .est-rows{border:1px solid #000;border-radius:10px;overflow:hidden;background:#fff;}
@@ -2332,10 +2338,17 @@
         </summary>
         <div class="advanced-panel" style="display:flex;flex-direction:column;gap:14px;padding:16px 18px;">
             <div class="field" style="margin-bottom:0;">
+              <!-- 2026-09-16：省市两框历史上既无标签也无占位文字（追溯至早期备份均为 placeholder=""），
+                   空状态下就是两个空白框 + 上下箭头，用户看不出这一格要填什么。
+                   补一行与两列对齐的标签 + 框内短占位。纯展示层，不触达任何逻辑。 -->
+              <div style="display:flex;gap:0;max-width:420px;margin-bottom:5px;">
+                <span id="provColLabel" style="flex:1;min-width:0;text-align:center;font-weight:600;font-size:14px;color:#374151;">📍 参保省份</span>
+                <span id="cityColLabel" style="flex:1;min-width:0;text-align:center;font-weight:600;font-size:14px;color:#374151;">🏙 所在城市</span>
+              </div>
               <div style="display:flex;gap:0;max-width:420px;position:relative;">
                 <div style="flex:1;position:relative;overflow:visible;z-index:50;" id="provComboWrap" oncontextmenu="return false">
                   <div style="position:relative;">
-                    <input id="avgSalaryProv" type="text" autocomplete="off" spellcheck="false" placeholder="" style="width:100%;font-size:15px;padding:9px 60px 9px 10px;border:2px solid #94a3b8;border-radius:6px 0 0 6px;background:#fff;cursor:text;text-align:center;box-sizing:border-box;">
+                    <input id="avgSalaryProv" type="text" autocomplete="off" spellcheck="false" placeholder="省份" style="width:100%;font-size:15px;padding:9px 60px 9px 10px;border:2px solid #94a3b8;border-radius:6px 0 0 6px;background:#fff;cursor:text;text-align:center;box-sizing:border-box;">
                     <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:2px;">
                       <div style="display:flex;flex-direction:column;gap:1px;">
                         <button type="button" id="provSpinUp" style="border:none;background:#e8ecf1;width:22px;height:14px;border-radius:3px 3px 0 0;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;" title="上一个省份">▲</button>
@@ -2347,7 +2360,7 @@
                 </div>
                 <div style="flex:1;min-width:0;position:relative;overflow:visible;z-index:50;" id="cityComboWrap" oncontextmenu="return false">
                   <div style="position:relative;">
-                    <input id="avgSalaryCity" type="text" autocomplete="off" spellcheck="false" placeholder="" style="width:100%;font-size:15px;padding:9px 38px 9px 10px;border:2px solid #94a3b8;border-left:none;border-radius:0 6px 6px 0;background:#f1f3f7;color:#9aa6b8;cursor:text;text-align:center;box-sizing:border-box;" readonly>
+                    <input id="avgSalaryCity" type="text" autocomplete="off" spellcheck="false" placeholder="城市" style="width:100%;font-size:15px;padding:9px 38px 9px 10px;border:2px solid #94a3b8;border-left:none;border-radius:0 6px 6px 0;background:#f1f3f7;color:#9aa6b8;cursor:text;text-align:center;box-sizing:border-box;" readonly>
                     <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:2px;">
                       <div style="display:flex;flex-direction:column;gap:1px;">
                         <button type="button" id="citySpinUp" style="border:none;background:#e8ecf1;width:22px;height:14px;border-radius:3px 3px 0 0;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;" title="上一个城市">▲</button>
@@ -4067,7 +4080,8 @@
   var PAYOUT_TABLE = {40:233,41:230,42:226,43:223,44:220,45:216,46:212,47:208,48:204,49:199,
     50:195,51:190,52:185,53:180,54:175,55:170,56:164,57:158,58:152,59:145,60:139,
     61:132,62:125,63:117,64:109,65:101,66:93,67:84,68:75,69:65,70:56};
-  function payoutMonthsForAge(age) {
+  /** 纯插值：按周岁在官方表整数点之间线性插值（不受手动锁定影响）。 */
+  function pmAutoForAge(age) {
     var a = clamp(age, 40, 70);
     var lo = Math.floor(a), hi = Math.ceil(a);
     if (lo === hi) return PAYOUT_TABLE[lo];
@@ -4075,6 +4089,22 @@
     if (wl == null) return wh;
     if (wh == null) return wl;
     return wl + (wh - wl) * (a - lo);
+  }
+  /**
+   * 取本次测算实际采用的计发月数。
+   * ⚠️ 本函数是**全站唯一的计发月数漏斗**，只被 estimateAt 调用一次（L4585 一带），
+   *    因此「手动锁定」在此处统一生效，即可覆盖全部页面（结果页 / 规划方案卡 / 替代率可视化 /
+   *    职业年金），而 estimateAt / compute / recompute / readForm 等受回归 harness 逐个比对
+   *    源码的函数保持逐字节不变（正本冻结，不许改）。
+   *    state.pmOverrideAge：结果页「计发月数」下拉设定（null / 0 = 未锁定 → 连续插值）。
+   *    仅覆盖除数，不改退休时点与缴费年限。
+   */
+  function payoutMonthsForAge(age) {
+    if (state && state.pmOverrideAge > 0) {
+      var ov = PAYOUT_TABLE[state.pmOverrideAge];
+      if (ov > 0) return ov;
+    }
+    return pmAutoForAge(age);
   }
 
   /** 机关事业单位「老人 / 中人 / 新人」身份认定。 */
@@ -4162,6 +4192,7 @@
     plannerIndex: null,  // B 类规划器：用户为剩余年限选定的目标缴费档次（null=维持当前平均指数）
     retireView: 'now',    // 退休时点视图：'legal' 法定退休 | 'now' 按当前立即退休（沙盘推演默认） | 'custom' 自定义年月
     customRetireYM: null, // 自定义退休时点 {y, m}，仅 retireView==='custom' 时生效
+    pmOverrideAge: null,  // 【手动锁定计发月数】结果页「计发月数」下拉设定的年龄（40–70）；null=按周岁连续插值
     paid: false         // 专业版（IRR/NPV）是否已解锁：与 localStorage pension_proto_paid_v1 同步
   };
 
@@ -4913,38 +4944,52 @@
   }
 
   /**
-   * 「个人账户养老金」结果行旁的计发月数查表下拉框。
-   * 列出 40–70 岁整点对应的国发〔2005〕38号 官方计发月数，默认选中当前测算年龄，
-   * 便于律师向客户讲解「选 50 退 ⇒ 195 个月 / 选 55 退 ⇒ 170 个月 / 选 60 退 ⇒ 139 个月」。
-   * 纯展示性查表：切换下拉只更新旁边说明文字，不改变系统按连续插值实际采用的计发月数。
+   * 「个人账户养老金」结果行旁的计发月数控件。
+   * 列出 40–70 岁整点对应的国发〔2005〕38号 官方计发月数，便于律师向客户讲解
+   * 「选 50 退 ⇒ 195 个月 / 选 55 退 ⇒ 170 个月 / 选 60 退 ⇒ 139 个月」。
+   * ★ 可手动锁定：选中某年龄后 state.pmOverrideAge 被设定，该年龄的官方计发月数**覆盖**系统
+   *   按周岁连续插值的取值 → 个人账户养老金（及职业年金）随之重算，并驱动整套结果页/规划页刷新；
+   *   选回「自动」即恢复按周岁连续插值。⚠️ 只覆盖除数，不改退休时点与缴费年限。
+   * ★ UI 展示的计发月数恒等于本页算式里的除数（自动项显示插值实取值，手动项显示锁定值）。
    * @param {number} ageYears 当前测算周岁（可含小数）
-   * @param {number} systPm 系统按连续插值实际采用的计发月数
+   * @param {number} systPm 系统按连续插值实际采用的计发月数（未被锁定时＝公式除数）
    * @return {string} HTML 片段
    */
   function pmLookupHtml(ageYears, systPm) {
-    var cur = clamp(Math.round(ageYears), 40, 70);
-    var opts = '';
+    var ovAge = (state && state.pmOverrideAge > 0) ? state.pmOverrideAge : 0;
+    var autoPm = pmAutoForAge(ageYears);
+    var opts = '<option value="0" data-age="0"' + (ovAge ? '' : ' selected') + '>自动 · '
+      + ageYears.toFixed(1) + '岁 → ' + pmText(autoPm) + ' 个月</option>';
     for (var a = 40; a <= 70; a++) {
       var pm = PAYOUT_TABLE[a];
       if (pm == null) continue;
-      var sel = (a === cur) ? ' selected' : '';
-      opts += '<option value="' + pm + '" data-age="' + a + '"' + sel + '>'
-        + a + '岁 → ' + pm + '个月</option>';
+      var sel = (a === ovAge) ? ' selected' : '';
+      opts += '<option value="' + pm + '" data-age="' + a + '"' + sel + '>手动 · '
+        + a + ' 岁 → ' + pm + ' 个月</option>';
     }
-    return '<span class="pm-lookup" title="国发〔2005〕38号 个人账户养老金计发月数表（整点年龄对应值）">'
-      + '<span class="pm-lbl">计发月数查表</span>'
-      + '<select class="pm-sel" onchange="window.__pmLookupShow(this,' + (systPm || 0) + ')">' + opts + '</select>'
-      + '<span class="pm-now"></span>'
+    var nowTxt = ovAge
+      ? ('已手动锁定 ' + ovAge + ' 岁 → ' + PAYOUT_TABLE[ovAge] + ' 个月（即本页算式除数）')
+      : ('当前按 ' + ageYears.toFixed(2) + ' 周岁连续插值取 ' + pmText(autoPm) + ' 个月（未锁定）');
+    return '<span class="pm-lookup" title="国发〔2005〕38号 个人账户养老金计发月数表（整点年龄对应值）；可手动锁定后整套重算">'
+      + '<span class="pm-lbl">计发月数</span>'
+      + '<select class="pm-sel" onchange="window.__pmLookupShow(this)">' + opts + '</select>'
+      + '<span class="pm-now">' + nowTxt + '</span>'
+      + '<span class="pm-tip' + (ovAge ? ' is-lock' : '') + '">手动选择计发月数，将覆盖系统自动插值计算，用于方案试算对比</span>'
       + '</span>';
   }
-  /** 下拉框切换时，在旁显示所选年龄对应的官方计发月数（系统仍按连续插值取值）。 */
-  window.__pmLookupShow = function (sel, systPm) {
+  /**
+   * 下拉框切换：锁定 / 解除锁定计发月数，并整套重算。
+   * 选「自动」= 解除锁定，恢复按周岁连续插值；选具体年龄 = 用该年龄官方值覆盖插值。
+   * 重算走 recompute()，与「📊 我的养老金」同一条链路，保证结果页/规划页/可视化口径一致。
+   */
+  window.__pmLookupShow = function (sel) {
     var opt = sel.options[sel.selectedIndex];
     if (!opt) return;
-    var age = opt.getAttribute('data-age');
-    var pm = opt.value;
-    var now = sel.parentNode.querySelector('.pm-now');
-    if (now) now.textContent = '选 ' + age + '岁 ⇒ ' + pm + ' 个月（系统按周岁连续插值取 ' + pmText(systPm) + '）';
+    var age = parseInt(opt.getAttribute('data-age'), 10) || 0;
+    state.pmOverrideAge = (age >= 40 && age <= 70) ? age : null;
+    if (state.calc) {
+      try { recompute(); } catch (e) { console.error('pm override recompute:', e); }
+    }
   };
 
   /**
@@ -5109,7 +5154,11 @@
         subst: sumSubst,
         result: '＝ ' + fmtMoney(e.total) + ' 元/月',
         src: '退休时点 ' + ymText(retireYM) + '（' + ageText(retireYM - c.birthYM) + '）· 计发月数 '
-          + e.payoutMonths.toFixed(0) + '（按 ' + e.ageYears.toFixed(2) + ' 周岁连续插值，非就近取整）· 累计缴费 '
+          + pmText(e.payoutMonths)
+          + (state.pmOverrideAge > 0
+              ? '（已手动锁定 ' + state.pmOverrideAge + ' 岁官方值，覆盖系统插值）'
+              : '（按 ' + e.ageYears.toFixed(2) + ' 周岁连续插值，非就近取整）')
+          + ' · 累计缴费 '
           + fmtYr(e.years) + (e.minMet ? '（已达最低年限）' : '（<b style="color:#1d4ed8;">未达最低年限 '
           + fmtYearsMonths(c.minMonths) + '</b>）')
       }, 'result-final')
@@ -5128,7 +5177,7 @@
           result: '＝ ' + fmtMoney(eSpec.total) + ' 元/月'
             + (diff !== 0 ? '<br><span style="' + diffCls + ';font-weight:700;">较法定退休 ' + (diff > 0 ? '+' : '') + fmtMoney(diff) + ' 元/月</span>' : ''),
           src: '提前至 ' + ymText(c.specRetireYM) + '（' + c.specBaseAge + '周岁）· 计发月数 '
-            + eSpec.payoutMonths.toFixed(0) + '· 累计缴费 ' + fmtYr(eSpec.years)
+            + pmText(eSpec.payoutMonths) + '· 累计缴费 ' + fmtYr(eSpec.years)
             + (eSpec.minMet ? '' : '（<b style="color:#1d4ed8;">未达最低年限</b>）')
         }, '');
       }())
@@ -5158,13 +5207,18 @@
       + entRow('个人账户养老金', '<span class="pm-wrap">' + fmtMoney(e.personal) + ' 元/月'
         + pmLookupHtml(e.ageYears, e.payoutMonths) + '</span>', {
         formula: '个人账户储存额（退休时本息）÷ 计发月数',
-        subst: '＝ ' + fmtMoney(e.balance) + ' ÷ ' + e.payoutMonths.toFixed(0),
+        subst: '＝ ' + fmtMoney(e.balance) + ' ÷ ' + pmText(e.payoutMonths),
         result: '＝ ' + fmtMoney(e.personal) + ' 元/月',
         extra: entAccTable(e.account),
         src: '期初余额 ' + fmtMoney(p.accountBalance) + ' 元（表单录入）；未来每月计入 ＝ 社平 '
           + wageTxt + ' × 指数 ' + idxTxt + ' × ' + (PERSONAL_RATE * 100).toFixed(0) + '% ＝ '
-          + fmtMoney(e.monthlyContrib) + ' 元/月；计发月数 ' + e.payoutMonths.toFixed(0)
-          + ' 按 ' + e.ageYears.toFixed(2) + ' 周岁在 50 岁 195 / 55 岁 170 / 60 岁 139 之间连续插值。'
+          + fmtMoney(e.monthlyContrib) + ' 元/月；计发月数 ' + pmText(e.payoutMonths)
+          + (state.pmOverrideAge > 0
+              ? '（<b>已手动锁定 ' + state.pmOverrideAge + ' 岁官方值，覆盖系统插值</b>；系统自动值为 '
+                + pmText(pmAutoForAge(e.ageYears)) + '，按 ' + e.ageYears.toFixed(2)
+                + ' 周岁连续插值。本项只换除数做方案试算，未改动退休时点与缴费年限，'
+                + '月应发总额随之同步刷新。）'
+              : ' 按 ' + e.ageYears.toFixed(2) + ' 周岁在 50 岁 195 / 55 岁 170 / 60 岁 139 之间连续插值。')
       })
 
       // ——— ③ 过渡性养老金 ———
@@ -5190,7 +5244,7 @@
           ? '职业年金储存额 ÷ 计发月数（单位 8% ＋ 个人 4%，测算模型按示意口径估算储存额）'
           : '老人（2014.10 前已退休）不计发职业年金',
         subst: e.professionalAnnuity > 0
-          ? ('＝ ' + fmtMoney(e.professionalAnnuity * e.payoutMonths) + ' ÷ ' + e.payoutMonths.toFixed(0))
+          ? ('＝ ' + fmtMoney(e.professionalAnnuity * e.payoutMonths) + ' ÷ ' + pmText(e.payoutMonths))
           : '＝ 0',
         result: '＝ ' + fmtMoney(e.professionalAnnuity) + ' 元/月',
         src: e.professionalAnnuity > 0
@@ -6511,7 +6565,7 @@
         + '<td>' + idxStr + '</td>'
         + '<td>' + fmtYr(rr.months / 12) + '</td>'
         + '<td>' + retireAge + '</td>'
-        + '<td>' + rr.payoutMonths.toFixed(0) + '</td>'
+        + '<td>' + pmText(rr.payoutMonths) + '</td>'
         + '<td>' + fmtMoney(rr.basic) + '</td>'
         + '<td>' + fmtMoney(rr.personal) + '</td>'
         + '<td><b>' + fmtMoney(rr.total) + '</b></td>'
@@ -6667,15 +6721,21 @@
     // 旧逻辑在外层被 console.error 静默吞掉，导致并排对比页可能沿用陈旧快照。
     // 改为安全清空快照（对比页已有 null 引导提示），不抛错、不打印噪音。
     var e;
+    // 「计发月数」手动锁定只用于结果页方案试算；并排对比快照必须固定按系统插值口径，
+    // 否则企业侧会与机关侧（法定退休）口径不一致，故此处临时关掉锁定，取完再还原。
+    var _pmOvSnap = state.pmOverrideAge;
+    state.pmOverrideAge = null;
     try {
       e = estimateAt(c, c.legalYM, null);            // 与 renderEstimate 完全同一口径
     } catch (err) {
+      state.pmOverrideAge = _pmOvSnap;
       __lastEntResult = null;
       // ★ L1（完整修复）：estimateAt 抛「参数缺失」时同样给出友好提示，与 recompute 主链路对齐
       __lastEntResultHint = '该退休年的官方养老金计发基数尚未收录，企业侧对比快照暂无法生成。可改用 2019–2026 年已收录年份测算后对比。';
       if (typeof window !== 'undefined') { window.__lastEntResult = null; window.__lastEntResultHint = __lastEntResultHint; }
       return;
     }
+    state.pmOverrideAge = _pmOvSnap;
     if (!e) {
       __lastEntResult = null;
       // ★ L1（完整修复）：参数缺失/计发基数未公布导致无法成快照时，给出与 recompute 主链路一致的友好提示，
@@ -6713,7 +6773,7 @@
       componentNote: '企业职工无职业年金，月应发总额 ＝ ①基础养老金 ＋ ②个人账户养老金 ＋ ③过渡性养老金。',
       extra: [
         { k: '合计缴费年限（含视同）', v: fmtYr(e.years) },
-        { k: '计发月数', v: e.payoutMonths.toFixed(0) }
+        { k: '计发月数', v: pmText(e.payoutMonths) }
       ],
       retireInfo: ymText(c.legalYM) + '退休 · ' + c.categoryName + ' · ' + c.genderText,
       calcTime: Date.now()
@@ -6916,6 +6976,8 @@
     errBox.style.display = 'none';
     errBox.innerHTML = '';
     state.computedOnce = true;
+    // 每次从表单重新起算，都清掉结果页「计发月数」的手动锁定，回到系统连续插值口径
+    state.pmOverrideAge = null;
     // 输入页始终走 lite 模式（缴费数据在结果页填写）；用户在结果页填完点「重新测算」后切换为完整模式
     state.liteMode = true;
     // 退出「查询（简版）」模式，恢复全版所有区块
@@ -7733,6 +7795,25 @@
     var activeIdx = -1;
     var selectedProv = "";
 
+    /* 【Ph34 · 2026-09-16】省份「框内显示简称」表（用户拍板 A 案）。
+     * 背景：省框可用文字宽仅 70px（390px 屏；右侧 60px 留给 ▲▼ 按钮），真实内核逐省实测出
+     *       恰有 5 个省的全称会被截断——内蒙古自治区 96px、西藏自治区 80px、
+     *       广西壮族自治区 112px、宁夏回族自治区 112px、新疆维吾尔自治区 128px；
+     *       其余 26 个放得下（4 字「黑龙江省」=64px 仍有余量），故本表只收这 5 个。
+     * 口径安全（纯显示层）：selectedProv 始终保存**全称**，readForm() 经 _realValue 取到的仍是全称，
+     *       getPensionParams / PROV_* 系列参数表与全部引擎计算均不受影响。
+     * 下拉列表（provList 的 text）仍完整展示全称，不受本表影响。
+     * 附带好处：5 个简称都是对应全称的**前缀**，故按框内文字做前缀过滤仍命中同一省份。
+     */
+    var PROV_SHORT = {
+      '内蒙古自治区': '内蒙古',
+      '西藏自治区': '西藏',
+      '广西壮族自治区': '广西',
+      '宁夏回族自治区': '宁夏',
+      '新疆维吾尔自治区': '新疆'
+    };
+    function provDisplay(full) { return PROV_SHORT[full] || full || ""; }
+
     /**
      * 【Phase 13 · 方案2】移动端下拉方向自适应。
      * 按当前可视区空间决定列表「朝上 / 朝下」展开，避开手机输入法工具条
@@ -7807,8 +7888,8 @@
     }
 
     function selectItem(val) {
-      selectedProv = val;
-      provInput.value = val;
+      selectedProv = val;                 // 全称（口径来源）
+      provInput.value = provDisplay(val); // 框内显示简称（长名不再被截断）
       provDrop.style.display = "none";
       activeIdx = -1;
       updateClearBtn();
@@ -7887,16 +7968,18 @@
           if (activeIdx >= 0 && activeIdx < kids.length) {
             selectItem(kids[activeIdx].getAttribute("data-value"));
           } else {
-            // 无高亮项：优先精确匹配输入框文字，否则选过滤后列表第一项
+            // 无高亮项：优先精确匹配输入框文字（兼容框内显示简称），否则选过滤后列表第一项
             var typed = provInput.value.trim();
-            var exactP = provList.find(function (it) { return it.text === typed; });
+            var exactP = provList.find(function (it) { return it.text === typed || provDisplay(it.value) === typed; });
             if (exactP) { selectItem(exactP.value); return; }
             // 取当前可见列表第一项的 data-value
             var firstVal = kids[0].getAttribute("data-value");
             if (firstVal) selectItem(firstVal);
           }
         } else if (provInput.value.trim()) {
-          var exact2 = provList.find(function (it) { return it.text === provInput.value.trim(); });
+          // 兼容框内显示简称：简称也算精确命中
+          var typedFlat = provInput.value.trim();
+          var exact2 = provList.find(function (it) { return it.text === typedFlat || provDisplay(it.value) === typedFlat; });
           if (exact2) selectItem(exact2.value);
         }
       } else if (e.key === "Escape") {
@@ -7912,7 +7995,7 @@
 
     Object.defineProperty(provInput, "_realValue", {
       get: function () { return selectedProv; },
-      set: function (v) { selectedProv = v; provInput.value = v; },
+      set: function (v) { selectedProv = v; provInput.value = provDisplay(v); },
       configurable: true
     });
 
@@ -7983,6 +8066,20 @@
         cityInput.removeAttribute("readonly");
         if (hint) hint.style.display = "none";
         if (avgInput) avgInput.placeholder = "";
+        /* 【Ph34 · 2026-09-16】清空省份时必须一并复位「养老金计发基数」。
+         * 原缺陷：本分支在此处直接 return，跳过了函数尾部那段
+         *         `if (prov) … else { baseInput.value = ""; }` 的复位逻辑，
+         *         于是「点框清空省份」后 #avgPensionBase 仍残留上一个省的值
+         *         （实测：广西 6983 → 点框清空后仍 6983；改选甘肃 7746 再清空后仍 7746），
+         *         用户会看到「省份空着、计发基数却是别省的」这种自相矛盾的状态。
+         * 口径与尾部完全一致：清空 + 走同一条联动刷新（refresh 内有 isFinite 守卫，
+         * 推算不出时不会清掉用户已填的缴费指数）。
+         */
+        var baseInputNoProv = $("avgPensionBase");
+        if (baseInputNoProv) {
+          baseInputNoProv.value = "";
+          if (window.syncAvgIndexLinkage) window.syncAvgIndexLinkage();
+        }
         return;
       }
 
@@ -8081,10 +8178,12 @@
       var prov = selectedProv;
 
       // 手动输入回退：从输入文本精确匹配省份名
+      // ⚠️ 必须同时接受「显示简称」：框内对 5 个长名显示的是简称（见 provDisplay），
+      //    若只比全称会把已选中的省判为不匹配 → prov 被清空 → 联动把计发基数一并抹掉。
       if (!typedVal) {
         prov = "";  // 清空
-      } else if (!prov || prov !== typedVal) {
-        var exact = provList.find(function (it) { return it.text === typedVal; });
+      } else if (!prov || (prov !== typedVal && provDisplay(prov) !== typedVal)) {
+        var exact = provList.find(function (it) { return it.text === typedVal || provDisplay(it.value) === typedVal; });
         prov = exact ? exact.value : "";  // 不匹配则清空
       }
 
@@ -8326,6 +8425,7 @@
     var radios = document.querySelectorAll('input[name="gender"]');
     for (var j = 0; j < radios.length; j++) radios[j].checked = false;
     state.computedOnce = false;
+    state.pmOverrideAge = null;   // 清空输入同步清除「计发月数」手动锁定
     toast('已清空所有输入');
   });
   if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
@@ -8380,6 +8480,7 @@
     }
     // 缴费数据完整 → 切换到完整模式重新计算
     state.liteMode = false;
+    state.pmOverrideAge = null;   // 重新测算 = 从表单重新起算，清除「计发月数」手动锁定
     var pr = $('page-result'); if (pr) pr.classList.remove('query-mode');
     recompute();
     toast('✅ 已根据缴费数据重新计算养老金金额');
