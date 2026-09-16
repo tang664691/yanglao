@@ -2709,7 +2709,7 @@
      注意：本段不得写出回归校验用的自执行收尾字符序列，也不要新增 IIFE。
      ================================================================== -->
 <div id="globalDisclaimer" style="padding:18px 16px 30px;text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;">【免责声明】本测算基于当前规则与输入值，历史加权平均指数及最终待遇受早年低档、视同缴费、异地转入等影响，均以社保经办机构最终核定为准。</div>
-<button type="button" id="btnGoBack" aria-label="返回上一页">← 上一步</button>
+<button type="button" id="btnGoBack" aria-label="回到上一步待补填的字段">← 上一步</button>
 
 <!-- 悬浮工具条 -->
 
@@ -6874,18 +6874,102 @@
     window.scrollTo(0, 0);
   }
 
-  /** 【Ph30】右上角「上一步」按钮显隐：非首页且历史栈非空才显示。 */
+  /** 【Ph30】右上角「上一步」按钮显隐：非首页，且（是信息输入页 或 历史栈非空）才显示。
+      信息输入页是流程第 1 步，它的「上一步」= 首页（保数据，见 goBackPage）。
+      旧判据要求历史栈非空，导致「首页→信息输入」时按钮整体消失（用户报「上一步功能没有了」）。
+      canGoBack 用途：避免「非首页但历史栈为空」的页面渲染出外观可用、点击无反应的
+      死按钮（此类页面无可回退目标，按钮应隐藏）。 */
   function updateBackBtn(id) {
     var b = $('btnGoBack');
     if (!b) return;
-    b.style.display = (id !== 'page-home' && _pageHistory.length > 0) ? 'block' : 'none';
+    var canGoBack = (id === 'page-input' || _pageHistory.length > 0);
+    b.style.display = (id === 'page-home') ? 'none' : (canGoBack ? 'block' : 'none');
   }
-  /** 【Ph30】回退：弹出历史栈顶并直接切页（不重算、不重置 → 表单数据零丢失）。 */
+  /** 【Ph30】回退：直接切页（不重算、不重置 → 表单数据零丢失）。
+      必须放在栈检查之前：否则从结果页/规划页经步骤条「‹」跳回输入页后，栈里残留
+      page-result / page-plan，点「上一步」会退回那里而非上一个浏览过的页面。
+      【Ph37】信息输入页内的「上一步」＝ 表单内回退：定位到第一个待补字段（典型＝漏选
+      性别）并滚动高亮，让用户就地补填。全程不离开 page-input、不调用任何 reset、
+      不写入任何字段。回首页改由左上角「← 返回首页」专门负责（backHomeKeepData）。 */
   function goBackPage() {
-    if (!_pageHistory.length) return;
-    var prev = _pageHistory.pop();
-    _suppressBackPush = true;
-    try { showPage(prev); } finally { _suppressBackPush = false; }
+    var curEl = document.querySelector('.page.show');
+    var curId = curEl ? curEl.id : '';
+    if (curId === 'page-input') {
+      focusFieldForFix();
+      return;
+    }
+    if (_pageHistory.length) {
+      var prev = _pageHistory.pop();
+      _suppressBackPush = true;
+      try { showPage(prev); } finally { _suppressBackPush = false; }
+    }
+  }
+
+  /** 【Ph37】把输入页滚到「第一个需要用户补填的字段」并做浅蓝脉冲高亮。
+      场景：用户在表单底部点「确认并测算」被拦下（如漏选性别），此时缺项远在页面上方；
+      点「上一步」应把他带回去，而不是甩回首页从零重来。
+      判据：校验错误文案 → 字段锚点（顺序与 validateForm 的 push 顺序一致，故必然命中
+      表单中位置最靠上的那一个缺项）。
+      安全性：readForm / validateForm 均为纯读函数，本函数不写任何字段、不切页、不清栈；
+      校验全通过（无缺项）时回退到表单首字段，语义仍是「回到表单起点」。 */
+  function focusFieldForFix() {
+    var targetId = '';
+    try {
+      var errs = validateForm(readForm()) || [];
+      for (var i = 0; i < errs.length; i += 1) {
+        var e = String(errs[i]);
+        if (e.indexOf('性别') !== -1) { targetId = 'genderRow'; break; }
+        if (e.indexOf('出生年月') !== -1) { targetId = 'birthY'; break; }
+        if (e.indexOf('身份类别') !== -1) { targetId = 'category'; break; }
+        if (e.indexOf('首次参保') !== -1) { targetId = 'firstY'; break; }
+        if (e.indexOf('最后参保') !== -1) { targetId = 'lastY'; break; }
+        if (e.indexOf('累计已缴') !== -1) { targetId = 'paid'; break; }
+        if (e.indexOf('省份') !== -1) { targetId = 'avgSalaryProv'; break; }
+        if (e.indexOf('地市') !== -1) { targetId = 'avgSalaryCity'; break; }
+        if (e.indexOf('月缴费基数') !== -1) { targetId = 'avgSalary'; break; }
+        if (e.indexOf('缴费指数') !== -1) { targetId = 'avgIndex'; break; }
+        if (e.indexOf('个人账户储存额') !== -1) { targetId = 'accountBalance'; break; }
+      }
+    } catch (e0) { targetId = ''; }
+    if (!targetId) targetId = 'birthY';
+    var el = $(targetId);
+    if (!el) return;
+    /* 字段若落在折叠区（<details>）内，先展开，否则滚过去仍是不可见 */
+    var p = el.parentNode;
+    while (p && p !== document.body) {
+      if (p.tagName === 'DETAILS') { try { p.open = true; } catch (e1) {} break; }
+      p = p.parentNode;
+    }
+    /* 确保所属面板可见（当前输入页只有 pane-basic 一个 pane，此为向前兼容） */
+    try { showInputPane('pane-basic'); } catch (e2) {}
+    /* 瞬时居中滚动（不用 smooth：动画期间量到的坐标不准，会让高亮框画偏） */
+    try { el.scrollIntoView({ block: 'center' }); } catch (e3) {
+      try { el.scrollIntoView(); } catch (e4) {}
+    }
+    flashFieldRect(el);
+  }
+
+  /** 【Ph37】在目标元素外围画一圈浅蓝脉冲高亮（警示蓝 #1d4ed8，遵守去红铁律）。
+      实现要点：高亮层挂在 document.body 下并 position:fixed，因此**完全不触碰锁定区
+      #enterpriseForm 内任何节点的 DOM / 结构 / 类名**，只在视觉上覆盖一层描边；
+      2 秒后自动淡出，pointer-events:none 不拦截任何点击。 */
+  function flashFieldRect(el) {
+    if (!el || !el.getBoundingClientRect) return;
+    var box = document.getElementById('__fieldFlash');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = '__fieldFlash';
+      document.body.appendChild(box);
+    }
+    var r = el.getBoundingClientRect();
+    box.style.cssText = 'position:fixed;pointer-events:none;z-index:99998;' +
+      'border:2px solid #1d4ed8;border-radius:12px;background:rgba(219,234,254,.18);' +
+      'box-shadow:0 0 0 4px rgba(29,78,216,.14);opacity:0;transition:opacity .25s ease;' +
+      'left:' + Math.round(r.left - 6) + 'px;top:' + Math.round(r.top - 6) + 'px;' +
+      'width:' + Math.round(r.width + 12) + 'px;height:' + Math.round(r.height + 12) + 'px;';
+    box.style.opacity = '1';
+    if (window.__fieldFlashT) clearTimeout(window.__fieldFlashT);
+    window.__fieldFlashT = setTimeout(function () { box.style.opacity = '0'; }, 2000);
   }
 
   /** 跳转到步骤 i（0 输入 / 1 结果 / 2 规划 / 3 复合参保）。 */
@@ -8503,35 +8587,16 @@
     }
   }
 
-  /** 【需求A】打开「返回首页」二次确认弹窗（真实 DOM 弹窗，按用户要求每次必弹）。 */
-  function openBackHomeConfirm() {
-    var html =
-      '<div style="padding:20px;">'
-      + '<div style="font-size:18px;font-weight:800;color:#1d4ed8;margin-bottom:10px;">确定放弃本次填写并返回首页？</div>'
-      + '<div style="font-size:14px;color:#334155;line-height:1.7;margin-bottom:18px;">返回首页将放弃当前填写，已填写的资料将被清空。</div>'
-      + '<div style="display:flex;gap:10px;justify-content:flex-end;">'
-      + '<button type="button" id="bhStayBtn" onclick="window.__backHomeStay()" style="padding:10px 18px;font-size:14px;font-weight:700;color:#1d4ed8;background:#fff;border:1.5px solid #dbeafe;border-radius:8px;cursor:pointer;">继续填写</button>'
-      + '<button type="button" id="bhDiscardBtn" onclick="window.__backHomeDiscard()" style="padding:10px 18px;font-size:14px;font-weight:700;color:#fff;background:#1d4ed8;border:none;border-radius:8px;cursor:pointer;">放弃并返回</button>'
-      + '</div></div>';
-    wbOpenModal(html);
-  }
-
-  /** 弹窗【继续填写】：仅关闭弹窗，停留在当前页面，表单数据不变。 */
-  window.__backHomeStay = function () { wbCloseModal(); };
-
-  /** 弹窗【放弃并返回】：复用空白态复位清空录入后回到首页。 */
-  window.__backHomeDiscard = function () {
-    wbCloseModal();
-    resetFormToBlank(true);
-    try { recompute(); } catch (e) {}
-    try { updateCategoryHint(); } catch (e) {}
+  /** 【Ph36】「返回首页」= 纯导航：直接切页，表单数据原样保留（不清空、不弹确认）。
+      用户拍板：返回首页只是导航行为，不应被当成「重置表单」。
+      showPage('page-home') 只清空导航历史栈，不触碰任何表单字段。 */
+  function backHomeKeepData() {
     showPage('page-home');
-  };
+  }
 
   /* 仅供真实 Blink 探针直接驱动 / 只读诊断（不参与业务逻辑） */
   window.__refreshGenderNeedHint = refreshGenderNeedHint;
   window.__resetFormToBlank = resetFormToBlank;
-  window.__openBackHomeConfirm = openBackHomeConfirm;
   window.__appState = state;
 
   // ---- 主要按钮 ----
@@ -8544,13 +8609,14 @@
     // 清空性别单选
     var radios = document.querySelectorAll('input[name="gender"]');
     for (var j = 0; j < radios.length; j++) radios[j].checked = false;
+    state.gender = '';   // 新增：性别态同步清空（否则 readForm 回退读到残留值 → 校验被绕过）
     state.computedOnce = false;
     state.pmOverrideAge = null;   // 清空输入同步清除「计发月数」手动锁定
     toast('已清空所有输入');
   });
   if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
-  $('btnBackHome').addEventListener('click', openBackHomeConfirm);
-  if ($('btnBackHome2')) $('btnBackHome2').addEventListener('click', openBackHomeConfirm);
+  $('btnBackHome').addEventListener('click', backHomeKeepData);
+  if ($('btnBackHome2')) $('btnBackHome2').addEventListener('click', backHomeKeepData);
   if ($('btnBackBasic')) $('btnBackBasic').addEventListener('click', function () { showInputPane('pane-basic'); });
   if ($('btnBackInput')) $('btnBackInput').addEventListener('click', function () { showPage('page-input'); });
   if ($('btnGoPlan')) $('btnGoPlan').addEventListener('click', function () {
@@ -8562,8 +8628,8 @@
     recompute(); showPage('page-plan');
   });
   $('btnBackResult').addEventListener('click', function () { recompute(); showPage('page-result'); });
-  if ($('btnBackHomeCareer')) $('btnBackHomeCareer').addEventListener('click', openBackHomeConfirm);
-  if ($('btnBackHomeCompare')) $('btnBackHomeCompare').addEventListener('click', openBackHomeConfirm);
+  if ($('btnBackHomeCareer')) $('btnBackHomeCareer').addEventListener('click', backHomeKeepData);
+  if ($('btnBackHomeCompare')) $('btnBackHomeCompare').addEventListener('click', backHomeKeepData);
   // 结果页「重新测算」按钮：校验缴费数据 → 完整模式重算
   if ($('btnRecalc')) $('btnRecalc').addEventListener('click', function () {
     var f = readForm();
@@ -11533,7 +11599,7 @@
     bindAdminMode();
 
     // ★ 用户要求：每次打开页面输入框都是空白，不恢复任何缓存/默认值
-    //   空白态复位统一收敛到 resetFormToBlank(false)（与弹窗「放弃并返回」共用同一逻辑；
+    //   空白态复位统一收敛到 resetFormToBlank(false)（加载初始化路径；「返回首页」现为纯导航，不清空表单；
     //   false = 不额外复位机关身份证录入态，保持原加载行为逐字不变）
     resetFormToBlank(false);
     recompute();
