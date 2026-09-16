@@ -1110,7 +1110,7 @@
 
   @page { size: A4; margin: 12mm; }
   @media print{
-    .proto-banner,.stepper,.input-tabs,.form-actions,.back-link,
+    .privacy-notice,.proto-banner,.stepper,.input-tabs,.form-actions,.back-link,
     .start-screen,.reverse-entry,.report-set,button{display:none !important;}
     body{background:#fff;color:#000;}
     .card{box-shadow:none;border:1px solid #333;break-inside:avoid;}
@@ -1798,6 +1798,9 @@
 <section class="page" id="page-input">
   <div class="wrap">
     <button type="button" class="back-link" id="btnBackHome" style="cursor:pointer;background:none;border:none;color:#2563eb;font-size:15px;font-weight:700;padding:8px 0;text-decoration:none;">← 返回首页</button>
+
+    <!-- 隐私告知·A2）输入页顶部提示条：数据仅本地保存不上传，2026-09-16 迭代新增 -->
+    <div class="privacy-notice" style="background:#f8fafc;border:1px solid #e2e8f0;color:#64748b;font-size:13px;line-height:1.6;border-radius:8px;padding:8px 12px;margin-bottom:12px;">本工具数据仅保存在本机，不上传服务器；仅用于养老金测算，请谨慎填写个人信息。</div>
 
     <div class="print-disclaimer">
       ⚠ 免责声明：本工具为养老规划参考工具，测算结果<b>非社保经办机构核定依据</b>；结果仅供参考，不作为待遇申领、行政复议、诉讼证据使用。最终待遇以社保经办机构核定为准。
