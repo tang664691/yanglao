@@ -1600,6 +1600,30 @@
     .axyl-splash .ax-title{ margin-top:14px;font-size:26px;letter-spacing:4px;text-indent:2px; }
     .axyl-splash .ax-foot{ bottom:16px;bottom:calc(16px + env(safe-area-inset-bottom));font-size:13px; }
   }
+
+  /* ===== 【本轮】机关事业单位：退休待遇核定边界提示卡（老人 / 中人 · 浅蓝警示·禁红） ===== */
+  /* 说明：整块不得出现任何红色；⚠️ 段用左侧深蓝竖条 + 浅蓝底，💡 段用亮蓝竖条 + 更浅底区分。 */
+  .gov-notice-card{box-sizing:border-box;margin-top:14px;}
+  .gov-notice-card .gn-item{box-sizing:border-box;border-left:4px solid #1d4ed8;background:#eff6ff;
+    border-radius:8px;padding:12px 14px;color:#1e293b;font-weight:700;font-size:15px;line-height:1.75;
+    text-align:left;word-break:break-word;}
+  .gov-notice-card .gn-item.gn-tip{margin-top:6px;border-left-color:#3b82f6;background:#f0f9ff;font-weight:600;}
+
+  /* ===== 【本轮】机关板块：字段说明 ❓ 按钮 + 浅蓝气泡浮层（T3 / T5 共用，禁红） ===== */
+  .gov-help-btn{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;
+    width:19px;height:19px;padding:0;border:1.5px solid #1d4ed8;border-radius:50%;background:#eff6ff;
+    color:#1d4ed8;font-size:13px;font-weight:900;line-height:1;cursor:pointer;vertical-align:middle;
+    font-family:inherit;-webkit-tap-highlight-color:transparent;flex:0 0 auto;}
+  .gov-help-btn:active{background:#dbeafe;}
+  #govHelpBubble{position:fixed;z-index:9999;display:none;box-sizing:border-box;
+    background:#eff6ff;border:2px solid #3b82f6;border-radius:10px;
+    box-shadow:0 8px 30px rgba(15,23,42,.22);padding:10px 12px;color:#1e293b;
+    font-size:14px;font-weight:600;line-height:1.7;text-align:left;word-break:break-word;
+    max-width:320px;}
+  @media (max-width:480px){
+    .gov-notice-card .gn-item{font-size:14px;padding:11px 12px;}
+    #govHelpBubble{font-size:13.5px;}
+  }
 </style>
 </head>
 <body>
@@ -1789,7 +1813,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.23 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.25 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -2104,7 +2128,7 @@
             <div class="gov-field-pair">
               <label class="gov-label-sm">参加工作时间</label>
               <div class="date-row">
-                <input type="number" id="govStartY" min="1950" max="2014" placeholder="如 1974">
+                <input type="number" id="govStartY" min="1950" max="2035" placeholder="如 1974">
                 <input type="number" id="govStartM" min="1" max="12" placeholder="月">
               </div>
               <div class="gov-start-warn" id="govStartWarn" style="display:none;"></div>
@@ -2118,6 +2142,12 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 【本轮 T2】老人·退休待遇核定边界提示卡（仅老人可见，复用 inst-old-only 显隐机制；浅蓝警示·禁红） -->
+      <div class="gov-notice-card inst-old-only" id="govOldNoticeCard">
+        <div class="gn-item">⚠️ 重要说明：本测算结果仅为办理退休当时的初始养老待遇，不含退休后历年养老金上调增资，不可与当前每月银行卡到账金额对比，最终待遇以社保经办机构核定为准。</div>
+        <div class="gn-item gn-tip">💡 录入指引：下方岗位工资、薪级工资等分项，请参照社保局打印出具的「退休待遇核定单」上面列明标准录入，可由子女协助代为填写。</div>
       </div>
 
       <!-- ② 老人·工资口径（老办法口径，仅老人显示） -->
@@ -2140,10 +2170,10 @@
             <input type="number" id="govTotalWage" min="0" max="100000" step="100" placeholder="如 4500">
           </div>
           <div class="field">
-            <label>保留津贴补贴/历年增资（元/月）<span style="color:#1d4ed8;font-weight:700;font-size:17px;">（必填，按本人2014.9职务职级标准）</span></label>
+            <label>保留津贴补贴、历年调资增资（元/月）<span style="color:#1d4ed8;font-weight:700;font-size:15px;">以社保局退休待遇核定单为准</span></label>
             <input type="number" id="govAllowance" min="0" max="20000" step="10"
-                   placeholder="请按本人2014.9职务职级实际标准录入（元/月）"
-                   title="老办法 B 项·退休补贴标准：本项须手动录入，请按本人 2014 年 9 月职务职级对应的退休补贴标准填写。各省标准按职务职级分档、不存在全省统一值，系统不再自动带入，请查本人档案或工资条据实填写。">
+                   placeholder="按退休待遇核定单列明的保留津贴、历年调资增资填写（元/月）"
+                   title="老办法 B 项：退休待遇核定单列明的保留津贴补贴与历年调资增资（元/月）。老人于 2014 年 10 月前已退休，不适用并轨改革节点标准，请以社保局打印的退休待遇核定单为准；各省标准按职务职级分档、不存在全省统一值，系统不自动带入。">
           </div>
         </div>
       </div>
@@ -2163,6 +2193,17 @@
         <div class="gov-row-tip">高龄补贴实际待遇以当地人社部门实时政策为准；该金额只叠加到「预估到手月领」，不参与老办法基础退休金核算。</div>
       </details>
 
+      <!-- 【本轮 T4】中人·退休待遇核定边界提示卡（仅中人可见，复用 inst-zhong-only 显隐机制；浅蓝警示·禁红） -->
+      <div class="gov-notice-card inst-zhong-only" id="govMidNoticeCard">
+        <div class="gn-item">⚠️ 重要说明：本测算结果仅为办理退休当时的初始养老待遇，不含退休后历年养老金上调增资，不可与当前每月银行卡到账金额对比，最终待遇以社保经办机构核定为准。</div>
+      </div>
+
+      <!-- 【本轮】新人·退休待遇核定边界提示卡（仅新人可见；浅蓝警示·禁红） -->
+      <div class="gov-notice-card inst-new-only" id="govNewNoticeCard">
+        <div class="gn-item">⚠️ 重要说明：本测算结果仅为办理退休当时的初始养老待遇，不含退休后历年养老金上调增资，不可与当前每月银行卡到账金额对比，最终待遇以社保经办机构核定为准。</div>
+        <div class="gn-item gn-tip">💡 录入指引：新人 ＝ 2014 年 10 月后参加工作并退休，按新办法计发：基础养老金 + 个人账户养老金 + 职业年金；无视同缴费年限、无过渡性养老金，不适用新老办法对比与保底限高。下方参数请参照社保局打印的「退休待遇核定单」录入，可由子女协助填写；「退休时上年度社平工资（计发基数）」请按退休当年当地人社部门公布值手动填写，系统不作自动带出。</div>
+      </div>
+
       <!-- ②b 新办法参数（中人 / 新人） -->
       <div class="card inst-new-common" id="govNewCard">
         <h2 id="govNewCardTitle">②b 新办法·基本信息（中人）</h2>
@@ -2170,6 +2211,17 @@
           新办法 = 基础养老金 + 个人账户养老金 + 过渡性养老金（中人）+ 职业年金。留空则按默认值估算。
         </div>
         <div class="grid">
+          <!-- 【本轮 T6】参保省智能输入（仅中人，独立组件不与职工板 #avgSalaryProv 共用）：选中后按「退休上一年」自动带出省级计发基数 -->
+          <div class="field inst-zhong-only" id="govProvComboWrap">
+            <label>参保省（用于自动带出计发基数）</label>
+            <div style="position:relative;overflow:visible;">
+              <input id="govProvInput" type="text" autocomplete="off" spellcheck="false"
+                     placeholder="输入省份名，如 浙江"
+                     style="width:100%;box-sizing:border-box;">
+              <ul id="govProvDropdown" role="listbox"
+                  style="display:none;position:absolute;top:100%;left:0;right:0;z-index:9998;margin:4px 0 0;padding:0;list-style:none;background:#fff;border:2px solid #3b82f6;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.16);max-height:260px;overflow-y:auto;"></ul>
+            </div>
+          </div>
           <div class="field">
             <label>退休时上年度社平工资（元/月）</label>
             <input type="number" id="govAvgWage" min="1000" max="100000" step="100" placeholder="如 8000">
@@ -10130,7 +10182,7 @@
    *
    * @deprecated 整表自 P3(2026-08-08) 起在运行时**零引用**，仅作数据留档保留。
    *
-   *   ① allow —— P2 起废弃：B 项（2014.9 本人职务职级对应的退休补贴标准）在政策上
+   *   ① allow —— P2 起废弃：B 项（改革前本人职务职级对应的退休补贴标准）在政策上
    *      **按职务职级分档**，同一省内科员与厅局级相差数倍，**不存在「全省统一值」**；
    *      自动带入全省单一模拟值存在「模拟值被误读为法定值」的严谨性风险，故改为强制手动录入。
    *   ② h70 / h80 —— P3 起废弃：「参保省份」下拉及其全部联动逻辑已按需求整体删除，
@@ -10265,6 +10317,20 @@
     govSetGroupState('.inst-old-only', isOld ? 'enable' : 'hide');
     govSetGroupState('.inst-new-common', isOld ? 'hide' : 'enable');
     govSetGroupState('.inst-zhong-only', isMid ? 'enable' : 'hide');
+    govSetGroupState('.inst-new-only', isNew ? 'enable' : 'hide');
+
+    // 【D25 修复】离开中人态时，参保省入口随 .inst-zhong-only 一并隐藏，但省份组件状态会残留：
+    //   ① #govAvgWage 的「系统自动带出 + 只读」态残留 —— 新人（govCalcZhong 直接读该框值）
+    //      在界面上无任何可见控件可改 / 可清，只能整表重置，相对改前「空值可编辑」属回归；
+    //   ② __govProvSel 残留 —— 新人态下改「退休年」会触发下方 govRetireY 的 change 监听
+    //      重新自动带出并再次锁死。
+    // 故离开中人态时统一复位省份组件。守卫条件用 __govProvSel 非空：初始化调用
+    // （下方「事件绑定」段的 toggleGovNewCard();）执行时省份组件尚未初始化、
+    // __govProvSel 为 undefined，该守卫保证初始化路径零行为变化。
+    if (!isMid && __govProvSel) {
+      govProvAutoClear($('govAvgWage'));   // 只清「系统自动带出」的值；用户手填值一律保留
+      govProvReset();                      // 复位省份选择、清空省份输入框、解除只读锁定
+    }
 
     // 高龄倾斜面板：仅老人展开
     var hap = $('govHighAgePanel');
@@ -10540,6 +10606,32 @@
 
   /** 结果卡收尾：写入依据、显示、滚动。 */
   function govShowResult(rows, basis, isOld) {
+    // 【本轮 v1.0.25】新人从未进入 10 年过渡期，中人的「过渡期 / 保底限高」口径对新人属误读
+    //   → 显示层统一改写（govCalcZhong 零改动）。新人可见文案不再出现「过渡期」「保底限高」字样。
+    if (govPersonType() === 'NEW' && basis) {
+      var newSent = '新人自建立个人账户起即按新办法计发，适用「基础养老金 ＋ 个人账户养老金 ＋ 职业年金」，不设新老办法对比。';
+      // (1)「已超出 10 年过渡期」固定句（govCalcZhong 尾注）
+      var s1 = '该同志 2024 年 10 月后退休，已超出 10 年过渡期，完全按新办法计发（无保底限高）。';
+      var n1 = basis.split(s1).length - 1;
+      // (2)「处于 10 年过渡期内…保底限高」动态句（含 releasePct / 可选 cmpTag）
+      var re2 = /该同志退休时间处于 10 年过渡期内[\s\S]*?。/;
+      var had2 = re2.test(basis);
+      if (n1 === 1) {
+        basis = basis.replace(s1, newSent);
+      } else if (n1 > 1) {
+        console.warn('[govShowResult] 新人尾注 S1 命中 ' + n1 + ' 次（预期 1 次），已跳过替换以避免歧义。');
+      } else if (!had2) {
+        console.warn('[govShowResult] 新人尾注未命中：既无「已超出 10 年过渡期」原句、也无「处于 10 年过渡期内」句，请核对 govCalcZhong 尾注文本是否变更。');
+      }
+      if (had2) { basis = basis.replace(re2, newSent); }
+      // (3) 终检：新人可见文案不得残留中人过渡期口径子串（命中即告警，绝不静默）
+      var govLeak = ['处于 10 年过渡期内', '实行保底限高', '已超出 10 年过渡期'];
+      for (var li = 0; li < govLeak.length; li += 1) {
+        if (basis.indexOf(govLeak[li]) >= 0) {
+          console.warn('[govShowResult] 新人结果仍残留中人过渡期口径子串：' + govLeak[li]);
+        }
+      }
+    }
     $('govResultLines').innerHTML = govRenderLines(rows);
     $('govResultBasis').innerHTML = basis;
     $('govResultTitle').textContent = '测算结果';
@@ -10585,7 +10677,7 @@
     var retainEntered = !!retainEl0 && String(retainEl0.value || '').trim() !== '';
     var retainNote = retainEntered ? ''
       : '<br><b style="color:#1d4ed8;">⚠ 尚未录入「保留津贴补贴」（B项），本次按 0 计算，结果会明显偏低。</b>'
-        + '请在②工资口径中按本人 2014 年 9 月职务职级对应的退休补贴标准补录后重算。';
+        + '请在②工资口径中按社保局退休待遇核定单列明的保留津贴补贴、历年调资增资补录后重算。';
 
     var workMonths = (ry - wy) * 12 + (rm - wm);
     if (workMonths < 0) workMonths = 0;
@@ -10625,7 +10717,7 @@
         '退休费 ＝ 基本工资 × 计发比例 ＋ 保留津补贴<br>＝ ' + govMoney(basePay) + ' × ' + (ratio * 100).toFixed(0)
         + '% ＋ ' + govMoney(retain) + ' ＝ <b>' + govMoney(Math.round(retirePayBase)) + '</b>/月<br>'
         + '其中「保留津补贴」＝ ' + govMoney(retain) + (retainEntered ? '（手动录入）' : '（未录入，按 0 计）')
-        + '（含 <b>B 项·2014.9 职务职级退休补贴标准</b>；该项<b>由本人按职务职级实际标准手动录入</b>，'
+        + '（含 <b>B 项·退休待遇核定单列明的保留津贴补贴、历年调资增资</b>；该项<b>由本人按职务职级实际标准手动录入</b>，'
         + '各省按职级分档、无全省统一值，系统不再自动带入；'
         + '另含 <b>C 项·国办发〔2015〕3号增加退休费</b>，全国统一分档，已查证）。' + retainNote],
       ['退休当年退休费（全部工资口径·参考）', govMoney(Math.round(retirePayFull)) + '/月',
@@ -10683,8 +10775,8 @@
       + (ratio * 100).toFixed(0) + '%，工龄 ' + fmtYr(workYears) + '）＋ 保留津补贴；'
       + '回溯采用 2010–' + GOV_NOW_YEAR + ' 国家统一养老金调整幅度（' + h0 + '→' + h1 + '）近似，实际以社保经办机构核定为准。'
       + '高龄倾斜补贴仅模拟参考，不参与老办法基础退休金核算，其金额以当地人社部门实时政策为准。'
-      + '权威完整公式为：老办法待遇 ＝（A×M ＋ B ＋ C）× Π(1+Gn)，其中 A ＝ 2014.9 基本工资（岗位＋薪级）、'
-      + 'M ＝ 计发比例、B ＝ 2014.9 本人职务职级对应的退休补贴标准、'
+      + '权威完整公式为：老办法待遇 ＝（A×M ＋ B ＋ C）× Π(1+Gn)，其中 A ＝ 退休时基本工资（岗位＋薪级）、'
+      + 'M ＝ 计发比例、B ＝ 退休待遇核定单列明的保留津贴补贴、历年调资增资、'
       + 'C ＝ 国办发〔2015〕3号相应增加的退休费（全国统一分档，已查证）、Gn ＝ 历年工资（养老金）增长率；'
       + '本测算模型采用简化口径，将 B、C 两项合并计入「保留津补贴」并经历年调整间接体现，故不再单独叠加 C 项。';
 
@@ -11146,6 +11238,7 @@
   // 载入示例：老人·副高女教师（年份相对当前年计算，避免绝对年份逐年过时）
   $('btnGovExampleOld').addEventListener('click', function () {
     resetGovIdEntry();   // 示例是整套预设，先清掉上一次的身份证代入与锁定，避免字段被锁住
+    if (typeof govProvReset === 'function') govProvReset();   // 【本轮 T6】示例载入前清空参保省、解锁计发基数
     var ay = new Date().getFullYear();
     // 老人须在 2014.10 并轨前退休：相对值 ay-17，并以 2013 年为上限兜底
     var oRetireY = Math.min(ay - 17, 2013);
@@ -11176,13 +11269,22 @@
   // 载入示例：中人 / 新人（年份相对当前年计算）
   $('btnGovExampleMid').addEventListener('click', function () {
     resetGovIdEntry();   // 同上：示例载入前解除身份证锁定，保证出生/性别可被预设覆盖
+    if (typeof govProvReset === 'function') govProvReset();   // 【本轮 T6】示例载入前清空参保省、解锁计发基数
     var isNew = (govPersonType() === 'NEW');
     var ay = new Date().getFullYear();
-    // 中人须在 2014.10 后退休；为保证示例落在 10 年过渡期（2014.10–2024.9）内，上限取 2024
-    var mRetireY = Math.min(ay - 4, 2024);
-    if (mRetireY < 2015) mRetireY = 2015;
-    var mStartY = mRetireY - 37; // 37 年工龄（含视同）
-    var mBirthY = mRetireY - 55; // 女干部 55 周岁退休
+    var mRetireY, mStartY, mBirthY;
+    if (isNew) {
+      // 新人＝2014 年 10 月后参加工作：参工年不得早于 2015，退休年必须 >2014.10，
+      // 且须满足最低缴费年限 ⇒ 示例取「2015-09 参工、2050-09 退休」＝35 年连续缴费
+      mStartY = 2015;
+      mRetireY = 2050;
+    } else {
+      // 中人须在 2014.10 后退休；为保证示例落在 10 年过渡期（2014.10–2024.9）内，上限取 2024
+      mRetireY = Math.min(ay - 4, 2024);
+      if (mRetireY < 2015) mRetireY = 2015;
+      mStartY = mRetireY - 37; // 37 年工龄（含视同）
+    }
+    mBirthY = mRetireY - 55; // 女干部 55 周岁退休
     setGovRadio('govGender', 'F');
     setGovRadio('govAnnuityMode', 'monthly');
     $('govStartY').value = String(mStartY); $('govStartM').value = '9';
@@ -11196,6 +11298,11 @@
       $('govDeemed').value = ''; $('govDeemedIdx').value = ''; $('govCoef').value = '';
       $('govDPost').value = ''; $('govDSalary').value = ''; $('govDSubsidy').value = '';
       $('govOldBasePay').value = ''; $('govOldRetain').value = '0';
+      // 与「2015-09 参工、2050-09 退休」自洽的举例值（均为示例口径，非预测值）
+      $('govPaid').value = '420';        // 2015.09→2050.09 足月缴费 35 年（新人无「退休−2014.10」自动推算的适用性）
+      $('govAvgWage').value = '18000';   // 举例值（2050 年口径），非预测值
+      $('govBalance').value = '620000';  // 35 年缴费的举例值，非预测值
+      $('govAnnuity').value = '360000';  // 35 年缴费的举例值，非预测值
       toast('已载入新人示例（' + mRetireY + ' 年退休，按新办法直接计发）');
     } else {
       // 视同缴费年限 ＝ 参加工作 ~ 2014.10 的月数
@@ -11228,6 +11335,7 @@
         if (e) e.value = '';
       });
     resetGovIdEntry();   // 清空身份证、解除出生/性别锁定并复位三条提示
+    if (typeof govProvReset === 'function') govProvReset();   // 【本轮 T6】清空参保省并解锁计发基数
     $('govStartM').value = '7';
     $('govRetireM').value = '7';
     // P2：保留津贴补贴（B项）不再预置默认值，重置后保持空白，由用户按本人职务职级标准手动录入
@@ -11245,6 +11353,382 @@
 
   // 开始测算
   $('btnGovCalc').addEventListener('click', runGovCalc);
+
+  /* ==================================================================== */
+  /* 【本轮 T3 / T5 / T7】机关板块：字段说明 ❓ 气泡帮助组件（轻量·共用）      */
+  /* ==================================================================== */
+  /* 设计：全部帮助按钮共用「一个」挂到 document.body 的 fixed 气泡，          */
+  /*       以 getBoundingClientRect() 定位，规避父容器 overflow 裁切，         */
+  /*       并保证 390px 窄屏下左右边缘不溢出。不使用 alert / confirm。         */
+  var __govHelpBubbleEl = null;   // 单例气泡 DOM
+  var __govHelpAnchorBtn = null;  // 当前锚定的 ❓ 按钮
+
+  /** 懒创建单例气泡（挂 body，position:fixed，z-index:9999）。 */
+  function govHelpBubbleNode() {
+    if (__govHelpBubbleEl && document.body && document.body.contains(__govHelpBubbleEl)) {
+      return __govHelpBubbleEl;
+    }
+    var b = document.createElement('div');
+    b.id = 'govHelpBubble';
+    b.setAttribute('role', 'tooltip');
+    document.body.appendChild(b);
+    __govHelpBubbleEl = b;
+    return b;
+  }
+
+  /** 关闭当前气泡（幂等）。 */
+  function govHelpHide() {
+    if (__govHelpBubbleEl) __govHelpBubbleEl.style.display = 'none';
+    __govHelpAnchorBtn = null;
+  }
+
+  /** 在指定 ❓ 按钮旁显示气泡（自动避让视口左右/上下边缘）。 */
+  function govHelpShow(btn, text) {
+    if (!btn) return;
+    var b = govHelpBubbleNode();
+    var vw = window.innerWidth || document.documentElement.clientWidth || 390;
+    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight || 600;
+    // 先按可视宽度限制气泡最大宽度，再从右/左收边，确保 390px 屏不溢出
+    b.style.maxWidth = Math.min(320, vw - 24) + 'px';
+    b.textContent = text;
+    b.style.left = '0px';
+    b.style.top = '0px';
+    b.style.display = 'block';
+    var bw = b.offsetWidth || 0;
+    var bh = b.offsetHeight || 0;
+    var r = btn.getBoundingClientRect ? btn.getBoundingClientRect() : { left: 12, top: 12, bottom: 12, right: 12 };
+    var left = r.left;
+    if (left + bw > vw - 12) left = vw - 12 - bw;
+    if (left < 12) left = 12;
+    var top = r.bottom + 8;
+    if (top + bh > vh - 12) {
+      var above = r.top - 8 - bh;
+      top = (above >= 12) ? above : Math.max(12, vh - 12 - bh);
+    }
+    b.style.left = Math.round(left) + 'px';
+    b.style.top = Math.round(top) + 'px';
+    __govHelpAnchorBtn = btn;
+  }
+
+  /** 切换：同一按钮再次点击则关闭，否则显示。 */
+  function govHelpToggle(btn, text) {
+    if (__govHelpAnchorBtn === btn && __govHelpBubbleEl && __govHelpBubbleEl.style.display === 'block') {
+      govHelpHide();
+      return;
+    }
+    govHelpShow(btn, text);
+  }
+
+  /**
+   * 为某字段的 label 追加 ❓ 帮助按钮并绑定气泡（幂等，重复调用不会重复插入）。
+   * @param {string} fieldId 输入控件 id
+   * @param {string} text    帮助文案（逐字展示需求原文）
+   */
+  function govBindHelp(fieldId, text) {
+    var el = $(fieldId);
+    if (!el) return;
+    var box = null;
+    try { box = el.closest ? el.closest('.field, .gov-field-pair, .gov-basic-col') : null; } catch (e) { box = null; }
+    var lab = box ? box.querySelector('label') : null;
+    if (!lab) return;
+    if (lab.querySelector('.gov-help-btn')) return;   // 幂等
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gov-help-btn';
+    btn.setAttribute('aria-label', '查看填写说明');
+    btn.textContent = '?';
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      govHelpToggle(btn, text);
+    });
+    lab.appendChild(btn);
+  }
+
+  // 点击页面其他位置 / Esc / 缩放 / 滚动 → 关闭气泡（capture 阶段，避免被冒泡干扰）
+  document.addEventListener('mousedown', function (e) {
+    if (!__govHelpBubbleEl || __govHelpBubbleEl.style.display !== 'block') return;
+    if (__govHelpBubbleEl.contains(e.target)) return;
+    if (__govHelpAnchorBtn && __govHelpAnchorBtn.contains(e.target)) return;
+    govHelpHide();
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') govHelpHide();
+  });
+  window.addEventListener('resize', govHelpHide);
+  window.addEventListener('scroll', govHelpHide, true);
+
+  /* ------------------------------------------------------------------ */
+  /* 字段 → 帮助文案 映射（T3 老人 5 项 + T5 中人若干项，逐字使用需求原文）  */
+  /* ------------------------------------------------------------------ */
+  var GOV_FIELD_HELP = {
+    // — T3 · 老人·工资口径（#govSalaryCard） —
+    govPostWage: '退休前岗位工资：取自社保局退休待遇核定单，退休时岗位对应的标准工资，不是银行卡每月到手工资。',
+    govSalaryLevel: '退休前薪级工资：取自社保局退休待遇核定单，退休时薪级对应的标准工资。',
+    govTotalWage: '退休前全部月工资（含津补贴）：退休核定表列明退休当月应发工资总额，包含各项津补贴。',
+    govAllowance: '保留津贴补贴、历年调资增资：退休核定单列明的保留津贴以及历年调资增加待遇。',
+    govHighAge: '高龄倾斜补贴：为本省高龄补贴标准，请查询当地人社公布文件填写。',
+    // — T5 · 中人·新办法公共卡（#govNewCard） —
+    govProvInput: '选择参保省份后，系统将读取您填写的退休时间、取退休上一年度，自动带出该省养老金计发基数（2020 年及以后）；机关事业单位固定采用省级计发基数，深圳等计划单列市不单独适用。',
+    govAvgWage: '退休时上年度社平工资：取自参保省人社部门公布的「退休时上一年度全口径城镇单位就业人员月平均工资」，即养老金计发基数。已选省份且退休上一年在 2020–2025 内的，系统会自动带出并锁定，无需手填；退休年份较早（2019 年及以前）暂无历史基数库，请按当地人社公布的在岗职工月平均工资填写，或直接参照《退休待遇核定单》中的计发基数。',
+    govPaid: '本人 2014 年 10 月起的实际缴费月数，见核定表「实际缴费年限」；留空则系统按「退休时间 − 2014.10」自动推算。',
+    govAvgIdx: '核定表「本人平均缴费工资指数」栏，通常在 0.6–3.0 之间。',
+    govBalance: '核定表「个人账户储存额」栏（含利息）。',
+    govAnnuity: '核定表「职业年金个人账户储存额」栏。',
+    govPM: '按退休年龄查国家统一计发月数表（60 岁 139、55 岁 170、50 岁 195）；留空系统自动按退休时年龄取值。',
+    // — T5 · 中人专属卡（#govMidCard） —
+    govDeemed: '2014 年 10 月以前按国家规定计算的连续工龄，折算为月数，见核定表「视同缴费年限」。',
+    govDeemedIdx: '核定表「视同缴费指数」栏；留空则按本人平均缴费指数计算。',
+    govDPost: '按核定表对应栏目填写岗位 / 薪级 / 退休补贴三项指数；三项之和即为视同缴费指数，此拆解优先于上方「视同缴费指数」栏。',
+    govDSalary: '按核定表对应栏目填写岗位 / 薪级 / 退休补贴三项指数；三项之和即为视同缴费指数，此拆解优先于上方「视同缴费指数」栏。',
+    govDSubsidy: '按核定表对应栏目填写岗位 / 薪级 / 退休补贴三项指数；三项之和即为视同缴费指数，此拆解优先于上方「视同缴费指数」栏。',
+    govCoef: '各省过渡系数不同（通常 1.0%–1.4%），以当地人社公布为准；留空按 1.3% 估算。',
+    // — T5 · 老办法对比卡（#govOldCmpPanel） —
+    govOldBasePay: '档案记载的退休时岗位工资 + 薪级工资之和（基本工资口径）。',
+    govOldRetain: '退休待遇核定单列明的保留津补贴（元/月），无则填 0。',
+    // — T5 · 退休时间（#govRetireY / #govRetireM 同属一个 label，仅插一个 ❓） —
+    govRetireY: '以《退休待遇核定单》上的批准退休年月为准。',
+    govRetireM: '以《退休待遇核定单》上的批准退休年月为准。',
+    // — 补挂 · ① 基本信息卡（#govIdCard / #govBirthY/M / #govStartY/M） —
+    govIdCard: '选填。输入 18 位身份证号后，系统自动带出出生日期与性别并锁定，同时推算法定退休时间填入；推定的退休时间仅为参考值，请务必在「② 手动输入」栏核对修改。若档案最早记载的出生时间与身份证不一致，以档案最早记载为准。删除身份证号即可改回手动输入。',
+    govBirthY: '出生年月用于推算退休年龄，并据以确定个人账户养老金的计发月数（如 60 岁 139、55 岁 170、50 岁 195）。不填身份证也可直接在此手动填写；若本人档案最早记载的出生时间与身份证不一致，以档案最早记载为准。',
+    govBirthM: '出生年月用于推算退休年龄，并据以确定个人账户养老金的计发月数（如 60 岁 139、55 岁 170、50 岁 195）。不填身份证也可直接在此手动填写；若本人档案最早记载的出生时间与身份证不一致，以档案最早记载为准。',
+    govStartY: '以《退休待遇核定单》或本人档案记载的参加工作时间（含视同缴费起始时间）为准。老人据此计算工龄，并按国发〔1978〕104 号比例计发退休费（工龄 ≥35 年 90%／≥30 年 85%／≥20 年 80%／≥10 年 70%）；中人据此计算老办法对比用的工作年限。填写后系统会即时提示您适用「中人」还是「新人」。',
+    govStartM: '以《退休待遇核定单》或本人档案记载的参加工作时间（含视同缴费起始时间）为准。老人据此计算工龄，并按国发〔1978〕104 号比例计发退休费（工龄 ≥35 年 90%／≥30 年 85%／≥20 年 80%／≥10 年 70%）；中人据此计算老办法对比用的工作年限。填写后系统会即时提示您适用「中人」还是「新人」。'
+  };
+
+  /** 批量绑定帮助按钮（初始化时调用一次）。 */
+  function govBindAllHelp() {
+    for (var id in GOV_FIELD_HELP) {
+      if (Object.prototype.hasOwnProperty.call(GOV_FIELD_HELP, id)) govBindHelp(id, GOV_FIELD_HELP[id]);
+    }
+  }
+  govBindAllHelp();
+
+  /* ==================================================================== */
+  /* 【本轮 T6】机关板块：参保省智能输入 + 计发基数自动回填（仅中人）          */
+  /* ==================================================================== */
+  /* 说明：独立组件，DOM id 一律加 gov 前缀，绝不与职工板 #avgSalaryProv /    */
+  /*       #provDropdown / #provComboWrap / #provSpinUp / #provSpinDown /     */
+  /*       #provClearBtn 重名。全部事件绑定均做空值保护。                     */
+  var __govProvSel = '';      // 当前选中省份全称（机关板块只用全称，不做简称截断）
+  var __govProvActive = -1;   // 下拉当前高亮项索引
+  var __govProvAutoFilled = false;  // #govAvgWage 当前值是否由系统自动带出（用于切换年份时清理陈旧值）
+
+  /** 关闭省份联想下拉。 */
+  function govProvHideDrop() {
+    var d = $('govProvDropdown');
+    if (d) d.style.display = 'none';
+    __govProvActive = -1;
+  }
+
+  /** 省份全集：复用页面既有 CITY_DATA 的键（与职工板省份列表完全一致，共 31 项）。 */
+  function govProvList() {
+    var out = [];
+    if (typeof CITY_DATA !== 'undefined' && CITY_DATA) {
+      for (var p in CITY_DATA) {
+        if (Object.prototype.hasOwnProperty.call(CITY_DATA, p)) out.push(p);
+      }
+    }
+    return out;
+  }
+
+  /** 取「退休上一年」：直接读用户已填写的 #govRetireY（复用既有退休年月，不新造输入框）。 */
+  function govProvPrevYear() {
+    var ryEl = $('govRetireY');
+    var ry = ryEl ? parseInt(String(ryEl.value || '').trim(), 10) : 0;
+    if (!ry || isNaN(ry)) return 0;
+    return ry - 1;
+  }
+
+  /** 清除「系统自动带出」的陈旧值（仅在确认该值来自自动带出时才清，避免误删用户手填值）。 */
+  function govProvAutoClear(w) {
+    if (__govProvAutoFilled && w) w.value = '';
+    __govProvAutoFilled = false;
+  }
+
+  /** 解除 #govAvgWage 的只读锁定，恢复可编辑外观（白底）。 */
+  function govProvUnlockWage() {
+    var w = $('govAvgWage');
+    if (!w) return;
+    w.readOnly = false;
+    w.style.background = '';
+    w.style.color = '';
+    w.removeAttribute('title');
+  }
+
+  /**
+   * 依据当前选中省份 + 退休上一年，回填 / 锁定 #govAvgWage。
+   * 规则（严格按需求 6.2 / 6.3）：
+   *   ① prevY >= 2020 且历年基数表取到有效正值 → 回填并只读锁定（背景#f1f3f7 / 文字#9aa6b8）；
+   *   ② prevY === 2019（含北京表中存在的 2019 年）按口径「不属于 ≥2020」→ 不回填，保持可编辑；
+   *   ③ 2014–2019 无历史基数库 → 保持可编辑，并用 title 提示用户手填。
+   * 取数：复用页面现成函数 pensionBaseSeriesOf(prov, city)；
+   *       机关模块固定省级口径，刻意不传 city（传 ''）——这样广东省会自动走 provinceBase，
+   *       避免命中深圳计划单列市基数，天然满足「广东省特例」要求。
+   */
+  function govProvApplyBase() {
+    var w = $('govAvgWage');
+    if (!w) return;
+    if (!__govProvSel) { govProvAutoClear(w); govProvUnlockWage(); return; }
+    var prevY = govProvPrevYear();
+    var map = {};
+    if (typeof pensionBaseSeriesOf === 'function') {
+      try { map = pensionBaseSeriesOf(__govProvSel, '') || {}; } catch (e) { map = {}; }
+    }
+    var v = (prevY && map[prevY] > 0) ? map[prevY] : 0;
+    if (prevY >= 2020 && v > 0) {
+      w.value = String(v);
+      w.readOnly = true;
+      w.style.background = '#f1f3f7';
+      w.style.color = '#9aa6b8';
+      __govProvAutoFilled = true;
+      w.setAttribute('title', '已按「' + __govProvSel + '」' + prevY + ' 年省级养老金计发基数自动带出并锁定；如需修改，请先清空上方「参保省」。');
+    } else {
+      govProvAutoClear(w);   // 上一轮若由系统自动带出，则清掉，避免陈旧基数误导
+      govProvUnlockWage();
+      if (prevY) {
+        w.setAttribute('title', '该省 ' + prevY + ' 年在岗职工月平均工资暂无历史基数库，请按当地人社公布值填写（或参照《退休待遇核定单》计发基数）。');
+      }
+    }
+  }
+
+  /** 高亮下拉第 i 项。 */
+  function govProvSetActive(i) {
+    var d = $('govProvDropdown');
+    if (!d) return;
+    var kids = d.children;
+    if (__govProvActive >= 0 && __govProvActive < kids.length) kids[__govProvActive].style.background = '';
+    __govProvActive = i;
+    if (i >= 0 && i < kids.length) {
+      kids[i].style.background = '#eff6ff';
+      if (kids[i].scrollIntoView) { try { kids[i].scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    }
+  }
+
+  /** 渲染省份联想下拉（前缀匹配 + 命中片段高亮）。 */
+  function govProvRender(q) {
+    var d = $('govProvDropdown');
+    var inp = $('govProvInput');
+    if (!d || !inp) return;
+    q = (q || '').trim().toLowerCase();
+    var all = govProvList();
+    var items = q ? all.filter(function (t) { return t.toLowerCase().indexOf(q) === 0; }) : all;
+    d.innerHTML = '';
+    __govProvActive = -1;
+    if (items.length === 0) {
+      if (q) {
+        var no = document.createElement('li');
+        no.style.cssText = 'padding:10px 14px;font-size:13px;color:#9ca3af;text-align:center;';
+        no.textContent = '未找到匹配「' + inp.value.trim() + '」的省份';
+        d.appendChild(no);
+        d.style.display = 'block';
+      } else { d.style.display = 'none'; }
+      return;
+    }
+    items.forEach(function (t, i) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.setAttribute('data-value', t);
+      li.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0;color:#1e293b;';
+      var idx = t.toLowerCase().indexOf(q);
+      if (q && idx >= 0) {
+        li.innerHTML = t.substring(0, idx)
+          + '<b style="color:#3b82f6;">' + t.substring(idx, idx + q.length) + '</b>'
+          + t.substring(idx + q.length);
+      } else { li.textContent = t; }
+      li.addEventListener('mousedown', function (e) { e.preventDefault(); govProvSelect(t); });
+      li.addEventListener('mouseenter', function () { govProvSetActive(i); });
+      d.appendChild(li);
+    });
+    d.style.display = 'block';
+  }
+
+  /** 选中某省：全称回填输入框，并联动计发基数。 */
+  function govProvSelect(prov) {
+    if (!prov) return;
+    __govProvSel = prov;
+    var inp = $('govProvInput');
+    if (inp) {
+      inp.value = prov;   // 机关板块直接用全称（无职工板「长名简称」截断逻辑）
+      var evt = document.createEvent('Event');
+      evt.initEvent('change', true, true);
+      inp.dispatchEvent(evt);
+    }
+    govProvHideDrop();
+    govProvApplyBase();
+  }
+
+  /** 重置省份组件与计发基数锁定（供「重置」与「载入示例」调用）。 */
+  function govProvReset() {
+    __govProvSel = '';
+    __govProvAutoFilled = false;
+    var inp = $('govProvInput');
+    if (inp) inp.value = '';
+    govProvHideDrop();
+    govProvUnlockWage();
+  }
+
+  /* -------------------------- 事件绑定（全部空值保护） -------------------------- */
+  var __govProvInpEl = $('govProvInput');
+  var __govProvDropEl = $('govProvDropdown');
+  if (__govProvInpEl && __govProvDropEl) {
+    __govProvInpEl.addEventListener('input', function () { govProvRender(__govProvInpEl.value); });
+    __govProvInpEl.addEventListener('focus', function () { govProvRender(''); });
+    // 已有选中值时点击 → 清空重选，并解锁计发基数恢复可编辑
+    __govProvInpEl.addEventListener('click', function () {
+      if (__govProvSel && __govProvInpEl.value.trim()) {
+        __govProvSel = '';
+        __govProvInpEl.value = '';
+        govProvAutoClear($('govAvgWage'));
+        govProvUnlockWage();
+      }
+      govProvRender('');
+    });
+    __govProvInpEl.addEventListener('keydown', function (e) {
+      var visible = __govProvDropEl.style.display !== 'none';
+      var kids = __govProvDropEl.children;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault(); e.stopPropagation();
+        if (!visible) { govProvRender(__govProvInpEl.value); return; }
+        govProvSetActive(Math.min(__govProvActive + 1, kids.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault(); e.stopPropagation();
+        if (!visible) return;
+        govProvSetActive(Math.max(__govProvActive - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault(); e.stopPropagation();
+        if (visible && kids.length) {
+          if (__govProvActive >= 0 && __govProvActive < kids.length) {
+            govProvSelect(kids[__govProvActive].getAttribute('data-value'));
+          } else {
+            var typed = __govProvInpEl.value.trim();
+            var exact = govProvList().filter(function (t) { return t === typed; })[0];
+            var firstVal = kids[0].getAttribute('data-value');
+            if (exact) { govProvSelect(exact); } else if (firstVal) { govProvSelect(firstVal); }
+          }
+        } else {
+          var typed2 = __govProvInpEl.value.trim();
+          var exact2 = govProvList().filter(function (t) { return t === typed2; })[0];
+          if (exact2) govProvSelect(exact2);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        govProvHideDrop();
+      }
+    });
+    document.addEventListener('mousedown', function (e) {
+      var wrap = $('govProvComboWrap');
+      if (!wrap || !wrap.contains(e.target)) govProvHideDrop();
+    });
+  }
+  // 退休年份变化时，若已选省份则重新联动计发基数（保持与需求「读取退休上一年」一致）
+  var __govRetireYEl = $('govRetireY');
+  if (__govRetireYEl) {
+    __govRetireYEl.addEventListener('change', function () {
+      if (__govProvSel) govProvApplyBase();
+    });
+  }
 
   /* ==================================================================== */
   /*                              悬浮工具条                               */
