@@ -1440,9 +1440,9 @@
     #mobTabBar.has-result .mt-tab.mt-tab-r{ display:block; }
     #mobTabBar .mt-tab.active{ color:#0f172a; border-bottom-color:#0f172a; }
 
-    /* 页签栏固定于顶部 → 内容让位（仅页签栏真的显示时才让位，机关流程不留空白） */
+    /* 页签栏固定于顶部 → 内容让位（mt-tab-on=页签栏真的显示时）；机关流程的悬浮「← 上一步」按钮同样固定占用视口顶部 ~44px，故 body.gov-on 一并让位（PC 端零影响） */
     body.mt-tab-on #page-input,
-    body.mt-tab-on #page-result{ padding-top:calc(46px + env(safe-area-inset-top)); }
+    body.mt-tab-on #page-result, body.gov-on #page-input{ padding-top:calc(46px + env(safe-area-inset-top)); }
 
     /* ---- 卡片① 三组折叠组头 ---- */
     .mt-ghd{
@@ -2071,7 +2071,7 @@
         ← 返回首页
       </button>
 
-      <h1 style="text-align:center;font-size:40px;font-weight:900;margin:0 0 8px;letter-spacing:2px;color:#1f2d3d;">机关事业单位养老金测算</h1>
+      <h1 style="text-align:center;font-size:clamp(22px, 7vw, 40px);font-weight:900;margin:0 0 8px;letter-spacing:1px;color:#1f2d3d;">机关事业单位养老金测算</h1>
       <div id="dataVersionBadge" style="text-align:center;font-size:12px;color:#9ca3af;margin-bottom:14px;"></div>
 
       <div class="gov-banner" style="color:#1d4ed8;margin-bottom:24px;text-align:left;">
@@ -13347,6 +13347,9 @@
         if (on) bar.classList.add('is-on'); else bar.classList.remove('is-on');
       }
       if (document.body && document.body.classList) document.body.classList.toggle('mt-tab-on', !!on);
+      /* 【本轮】机关流程同样需要顶部让位：把「机关表单当前可见」这一状态同步到 body，
+         供 @media(max-width:768px) 内的 padding-top 规则使用（职工流程不受影响，PC 端零影响）。 */
+      if (document.body && document.body.classList) document.body.classList.toggle('gov-on', !!govActive());
 
       if (onResult) {
         hasResult = true;
