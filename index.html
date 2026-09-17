@@ -261,7 +261,7 @@
   .start-bottom-text{text-align:center;}
   .start-bottom-title{font-size:22px;font-weight:900;color:#1f2d3d;margin-bottom:6px;}
   .start-bottom-sub{font-size:14px;color:#6b7a8d;}
-  .start-illus svg{width:170px;height:auto;}
+  .start-illus{width:min(420px,100%);border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(20,40,80,.14);background:#eef2f7;}
 
   .compliance-ref{max-width:840px;margin:24px auto 0;background:rgba(255,255,255,.72);border:1px solid #e7edf5;
     border-radius:14px;padding:14px 18px;position:relative;z-index:2;text-align:left;}
@@ -1786,24 +1786,7 @@
       <div class="start-bottom-sub">让每一份规划，都指向更从容的明天</div>
     </div>
     <div class="start-illus">
-      <svg viewBox="0 0 200 140" width="170" height="119">
-        <g transform="translate(158,30)">
-          <circle r="20" fill="#ffd166"/>
-          <line x1="0" y1="-26" x2="0" y2="-34" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
-          <line x1="0" y1="26" x2="0" y2="34" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
-          <line x1="-26" y1="0" x2="-34" y2="0" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
-          <line x1="26" y1="0" x2="34" y2="0" stroke="#ffd166" stroke-width="3" stroke-linecap="round"/>
-        </g>
-        <g transform="translate(62,98)">
-          <circle cx="-18" cy="-32" r="11" fill="#f5d0c5"/>
-          <path d="M-32 0 Q-32 -22 -18 -22 Q-4 -22 -4 0 L-4 40 L-32 40 Z" fill="#7eb8da"/>
-          <circle cx="18" cy="-32" r="11" fill="#f5d0c5"/>
-          <path d="M4 0 Q4 -22 18 -22 Q32 -22 32 0 L32 40 L4 40 Z" fill="#d4a5a5"/>
-          <path d="M-18 -20 Q0 -30 18 -20" stroke="#8b6f6f" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <path d="M-32 40 L-46 40" stroke="#333" stroke-width="3" stroke-linecap="round"/>
-          <path d="M32 40 L46 40" stroke="#333" stroke-width="3" stroke-linecap="round"/>
-        </g>
-      </svg>
+      <img src="./retire-life.jpg" alt="安享晚年 · 老年夫妇公园漫步" width="1100" height="640" decoding="async" style="display:block;width:100%;height:auto;">
     </div>
   </div>
 
@@ -1813,7 +1796,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.25 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.26 · 数据仅存本机</div>
 
 </div>
 </section>
