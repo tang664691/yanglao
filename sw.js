@@ -3,7 +3,7 @@
    手机端下次打开才会自动清掉旧缓存、拉到新页面。
    只改 HTML 不改这里 → 联网时一般也能拿到新页面（HTML 走 network-first），
    但离线缓存可能仍是旧的，所以务必养成一起改的习惯。 */
-var SW_VERSION = 'v1.0.25';
+var SW_VERSION = 'v1.0.26';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
@@ -20,6 +20,9 @@ var PRECACHE = [
      原先它是全站唯一的外链（第三方 CDN，625KB）→ 离线打开必然图裂。
      预缓存它之后，全站零外链、离线完整。 */
   './hero.jpg',
+  /* v1.0.26：首页底部插画由扁平矢量改为写实照片（老年夫妇公园漫步）。
+     预缓存它，保证离线打开不图裂。 */
+  './retire-life.jpg',
   /* Phase 24：离线语音播报资产（16 段，合计约 63KB）。
      必须预缓存 —— 目标机的自带浏览器没有 speechSynthesis，身份证逐键播报
      完全依赖这批音频；只做「按需缓存」会导致首次离线打开时静音。 */
