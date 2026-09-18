@@ -1,9 +1,29 @@
-﻿/* ★★★ 更新说明（每次改完养老金.html 必读）★★★
-   改完 HTML 后，请把下面的 SW_VERSION 改成新版本号（例如 v1.0.0 → v1.0.1），
-   手机端下次打开才会自动清掉旧缓存、拉到新页面。
-   只改 HTML 不改这里 → 联网时一般也能拿到新页面（HTML 走 network-first），
-   但离线缓存可能仍是旧的，所以务必养成一起改的习惯。 */
-var SW_VERSION = 'v1.0.27';
+﻿/* ★★★ 更新说明（每次发版必读 · 机理版）★★★
+   本 SW 有两条互不相同的缓存策略（见下方 fetch 分支）：
+     ① 文档请求（mode==='navigate' || destination==='document'）→ network-first
+        联网时**总是**取最新 HTML，与 SW_VERSION 无关。
+     ② 其它同源静态资源（jpg/png/mp3/css/js…）→ cache-first
+        缓存命中即返回，**永不回源**。Ctrl+F5 也清不掉 SW 缓存。
+
+   ⇒ 结论（判据只有一条）：
+      改了「被 PRECACHE 的资源」的内容，就**必须**升 SW_VERSION。
+      升版后 activate 会删掉整个旧缓存并重新预缓存，老设备才拿得到新内容。
+      不升版 ⇒ install 不重跑、activate 不清缓存 ⇒ 老设备**永久**是旧的。
+
+   判据命令（命中即表示该资源被预缓存）：
+      grep -oF '<资源文件名>' sw.js
+
+   ⚠️ 本文件自身（sw.js）不在 PRECACHE 内，但它的内容变了浏览器**必然**重新安装它，
+      所以改它也算「改了 SW」，同样要升版本号。
+   ⚠️ 只改 index.html 内容、且未新增任何静态资源时：严格按机理**可不升版**
+      （文档请求在下方 fetch 的 isDocument 分支就 return，**永不进 cache-first**；
+       index.html 虽在 PRECACHE 内，但那只作**离线兜底**，不代表它被 cache-first 锁住）。
+      但**只要某资源名出现在 PRECACHE 列表里**（本项目 './index.html'、'./retire-life.jpg' 等即是），
+      改它内容就**必须升版**。真因＝ install 会 cache.add 整个 PRECACHE 写进新缓存名，
+      activate 又只删「同前缀、不同版本号」的旧缓存 ⇒ 升版**连带清掉整个旧缓存包**，
+      老设备因此不再持有旧副本，才会取到新字节（cache-first 的 jpg/mp3 尤其如此）。
+      判断永远以「该资源名是否出现在 PRECACHE」为准。 */
+var SW_VERSION = 'v1.0.31';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
