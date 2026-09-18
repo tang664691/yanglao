@@ -879,6 +879,122 @@
   .tl-legend{text-align:center;font-size:12.5px;font-weight:800;color:var(--muted);
     margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);}
 
+  /* ================================================================
+     职工板块一期 · 对角线退休时间主线（左上 → 右下）
+     说明：纯新增样式，不改动上方 .tl-* 任何声明；旧横向时间轴
+     代码与样式全部保留，仅临时隐藏其容器。全站禁用红色，警示走浅蓝系。
+
+     ★ 视觉分层（按用户 2026-09-18 拍板口径重做）：
+       1. 身份标签（当前 / 弹性最早 / 法定退休 / 延迟最晚）贴在主线上，
+          做成沿主线行走的小路标（.diag-online）；
+       2. 年月 + 年龄 + 一行说明挂在节点下方的文字块里（.diag-txt）；
+       3. 不使用引线箭头 —— 说明文字直接作为文字块第三行（.diag-desc）。
+       主线因此可以变细（5 → 2.5），不再与圆点形成双重强调；
+       画布加高到 480px，让四个文字块沿对角线自然错开。
+
+     ★ 几何约束（求解所得，非试错）：
+       实测画布 332px 宽。文字块宽 128px（38.6%）而节点横向间距
+       = 56%/3 × 332 ≈ 62px，故文字块无法靠「横向」避让，
+       必须靠「纵向」拉开 —— 这正是「全部挂节点下方」能零重叠的原因。
+       经枚举求解：x 跨度 20%~76%、y 跨度 10%~76% 时，
+       四块文字零重叠、零溢出。
+     ================================================================ */
+  .diag-wrap{position:relative;width:100%;margin:8px 0 4px;box-sizing:border-box;
+    aspect-ratio:332/820;overflow:hidden;border-radius:18px;
+    /* 窄屏健壮性：把本容器声明为「行内尺寸查询容器」，使内部以 px 写死的
+       偏移/宽度/字号可用 cqw（= 本容器宽度的 1%）等比缩放，等效于把整张
+       332×820 设计稿连同文字一起缩放到实际宽度 ⇒ 320px 窄机也不溢出。
+       --uscale =「1 个设计单位对应的实际长度」：不支持 cqw 时退回 1px（旧行为）。 */
+    container-type:inline-size;--uscale:1px;
+    background:linear-gradient(155deg,#c4f6fd 0%,#e4fbff 38%,#ffffff 62%,#f3fff6 100%);}
+  .diag-svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* 主线：彩色渐变 S 形曲线。粗 14px，端点圆头圆角。 */
+  .diag-line{stroke:url(#diagGrad);stroke-width:14;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  /* 身份标签：绿色胶囊，贴节点圆外侧（避开右侧文字块）。 */
+  /* 位置由 renderDiagonal 按节点序号内联注入 left/top 偏移。 */
+  .diag-online{position:absolute;transform:translate(-50%,-50%);z-index:5;
+    /* 偏移量由 renderDiagonal 以 --dx/--dy（设计单位，无单位数字）注入，
+       再乘以 --uscale 得到实际长度 ⇒ 窄屏下与主线同步缩放、不出画布。 */
+    left:calc(var(--dx,0) * var(--uscale,1px));top:calc(var(--dy,0) * var(--uscale,1px));
+    font-size:11px;font-weight:900;line-height:1;padding:3px 10px;border-radius:999px;white-space:nowrap;
+    background:#01874a;color:#ffffff;}
+  /* 节点 = 0 尺寸锚点，精确落在主线上；圆点与文字块都相对它绝对定位。 */
+  .diag-node{position:absolute;width:0;height:0;z-index:3;}
+  /* 圆点：核心 30px + 白环 3.5px（box-sizing:border-box ⇒ 外径 37px）。 */
+  .diag-dot{position:absolute;left:-18.5px;top:-18.5px;width:37px;height:37px;border-radius:50%;
+    box-sizing:border-box;border:3.5px solid #ffffff;background:#0084c9;}
+  /* 文字块：挂在节点右侧（left = 节点x + 47px），左对齐三行。 */
+  /* 第 1 行日期 / 第 2 行年龄（不再重复年月）/ 第 3 行说明。 */
+  .diag-txt{position:absolute;left:47px;top:0;transform:translateY(-50%);width:104px;
+    display:flex;flex-direction:column;align-items:flex-start;text-align:left;}
+  .diag-date{font-size:19px;font-weight:900;color:#12212b;line-height:1.25;white-space:nowrap;}
+  .diag-age{font-size:12.5px;font-weight:700;color:#4a6270;line-height:1.35;white-space:nowrap;}
+  .diag-desc{font-size:11px;font-weight:700;color:#2f7a52;line-height:1.4;margin-top:1px;white-space:nowrap;}
+  /* 红色方向箭头：内联 SVG 三角（fill #ee5a5a），由 renderDiagonal 生成。 */
+  .diag-arrow{fill:#ee5a5a;}
+  /* 顶部「关于弹性退休」入口按钮 + 点开的说明面板。 */
+  .diag-entry{position:absolute;right:12px;top:14px;z-index:6;
+    background:#01874a;color:#ffffff;border:none;cursor:pointer;
+    font-size:12px;font-weight:900;line-height:1;padding:7px 14px;border-radius:999px;white-space:nowrap;
+    box-shadow:0 1px 4px rgba(1,135,74,.28);}
+  .diag-entry-panel{position:absolute;right:12px;top:52px;z-index:7;max-width:84%;box-sizing:border-box;
+    background:#f2fbf6;color:#12212b;border-radius:12px;padding:12px 14px;
+    font-size:12px;font-weight:500;line-height:1.7;display:none;
+    box-shadow:0 4px 14px rgba(1,60,40,.18);}
+  .diag-entry-panel.show{display:block;}
+  /* 面板正文行：每条文案独占一行，行间留出可读间距；text-wrap:pretty 防段落末行孤字。 */
+  .diag-ep-line{display:block;margin-bottom:4px;text-wrap:pretty;}
+  /* 面板引流 CTA 行：绿色加重 + 上方 1px 分隔线拉开间距（纯展示，无交互/外链）；text-wrap:balance 均衡折行消除孤字。 */
+  .diag-ep-cta{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #c9e7d6;color:#01874a;font-weight:900;text-wrap:balance;}
+  /* 窄屏等比缩放：支持 cqw 时把「1 设计单位」改为 wrap 宽度的 1/332
+     （0.301205cqw），并把文字块的 px 尺寸/字号一并换成 cqw（基准宽 332）。
+     不支持 cqw 的浏览器整段跳过，自动退回上方 px 值（= 旧行为，390 视口零变化）。 */
+  @supports (width: 1cqw){
+    .diag-wrap{--uscale:0.301205cqw;}
+    .diag-txt{left:14.157cqw;width:31.326cqw;}
+    .diag-date{font-size:5.723cqw;}
+    .diag-age{font-size:3.765cqw;}
+    .diag-desc{font-size:3.313cqw;}
+    .diag-online{font-size:3.313cqw;padding:.904cqw 3.012cqw;}
+  }
+  /* 折旧保护：旧横向时间轴与明细表的样式全部保留，仅按需 display:none。 */
+  /* 原 .diag-dot.big/.gray/.blue/.orange 与 .diag-online.ok/.gray/.blue/.warn，*/
+  /* 以及 .diag-desc.ok/.hold 已随新视觉统一移除，避免与绿色胶囊/彩色圆点冲突。 */
+  /* 本区块样式仅作用于 #diagSection，不影响其它页面区块。 */
+  /* ------------------------------------------------------------- */
+
+  /* 15 秒可视化倒计时 */
+  .diag-count-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 2px;}
+  .diag-count-num{font-variant-numeric:tabular-nums;font-size:52px;font-weight:900;
+    color:var(--blue);line-height:1;min-width:66px;text-align:center;
+    transition:transform .15s ease;}
+  .diag-count-num.tick{transform:scale(1.14);}
+  .diag-count-label{font-size:14px;font-weight:800;color:var(--muted);line-height:1.4;text-align:left;}
+  .diag-count-label b{color:var(--blue);font-weight:900;}
+
+  /* 免费额度提示（浅蓝系，禁红） */
+  .diag-quota-note{margin:6px 0 2px;padding:9px 14px;border-radius:10px;background:#f0f9ff;
+    border:1px solid #dbeafe;color:#1d4ed8;font-size:13px;font-weight:700;line-height:1.6;text-align:center;}
+
+  /* 查看详情按钮 */
+  .diag-cta-wrap{display:flex;justify-content:center;margin:14px 0 4px;}
+  .diag-cta-btn{padding:13px 40px;font-size:17px;font-weight:900;color:#fff;
+    background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border:none;border-radius:12px;
+    box-shadow:0 8px 20px rgba(37,99,235,.28);cursor:pointer;letter-spacing:.5px;}
+  .diag-cta-btn:active{transform:translateY(1px);}
+
+  /* 付费占位弹窗（独立于专业版 paywall 逻辑） */
+  .diag-pay-price{display:inline-block;margin:4px 0 12px;padding:8px 18px;border-radius:12px;
+    background:#eff6ff;border:1.5px solid #dbeafe;color:#1d4ed8;font-size:16px;font-weight:900;}
+  .diag-pay-msg{font-size:14.5px;color:#334155;line-height:1.8;}
+  .diag-pay-note{margin-top:12px;font-size:12.5px;color:#64748b;line-height:1.6;}
+
+  /* 对角线模式：临时隐藏旧横向时间轴 + 明细表。
+     用 class + !important 兜底，避免主流程内联 display:'' 复位把隐藏冲掉。
+     旧 DOM / 代码 / 样式全部保留，移除本 class 即可一键切回。 */
+  #page-result.diag-mode #retireTimelineWrap{display:none!important;}
+  #page-result.diag-mode #resultTableSection{display:none!important;}
+
   .concl{border:1.5px solid #c9d6ea;border-radius:12px;background:#fbfdff;padding:15px 18px;margin-top:18px;
     font-size:14.5px;font-weight:700;color:var(--ink-2);line-height:1.95;}
   .concl b{color:var(--blue);font-weight:900;}
@@ -1796,7 +1912,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.27 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.31 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -2517,9 +2633,48 @@
       <!-- 最低缴费年限（简易查询时显示） -->
       <div id="liteMinYears" style="display:none;"></div>
 
-      <!-- 时间轴 -->
+      <!-- 时间轴（旧横向视图：代码与样式全部保留，展示对角线时临时隐藏） -->
       <div class="retire-timeline-wrap" id="retireTimelineWrap" style="display:none;">
         <div class="tl-wrap"><div class="tl-track" id="timeline"></div></div>
+      </div>
+
+      <!-- ================================================================
+           职工板块一期 · 对角线退休时间主线（复用 renderTimeline 的节点数据）
+           与旧横向时间轴并存：默认隐藏，由 renderDiagonal() 激活显示。
+           ================================================================ -->
+      <div id="diagSection" style="display:none;">
+        <div class="diag-wrap" id="diagWrap">
+          <svg class="diag-svg" id="diagSvg" viewBox="0 0 332 820" aria-hidden="true">
+            <defs>
+              <linearGradient id="diagGrad" x1="0" y1="0" x2="0.25" y2="1">
+                <stop offset="0%" stop-color="#0084c9"/>
+                <stop offset="30%" stop-color="#017ebd"/>
+                <stop offset="58%" stop-color="#0d9d5a"/>
+                <stop offset="100%" stop-color="#6bc647"/>
+              </linearGradient>
+            </defs>
+            <!-- 主线：彩色渐变 S 形曲线（viewBox 332x820）。控制点 = 4 个节点落点
+                 + 首尾外延点，经 Catmull-Rom 转三次贝塞尔求得；
+                 renderDiagonal 会用同一算法重算并覆盖本 d 的取值。 -->
+            <path class="diag-line" id="diagLine" d="M -24 -6 C -7.5 10 48.667 40.833 75 90 C 101.333 139.167 120.167 221.167 134 289 C 147.833 356.833 165.167 426.333 158 497 C 150.833 567.667 107.667 656.5 91 713 C 74.333 769.5 63.5 815.5 58 836"/>
+            <!-- 方向箭头容器（静态空 <g>）：renderDiagonal 以「字符串拼 HTML +
+                 innerHTML」写入 <path class="diag-arrow">，避免 createElementNS
+                 引入 SVG 命名空间 URI 字面量（全站零外链铁律）。放在主线之后
+                 ⇒ 箭头绘制在主线之上。 -->
+            <g id="diagArrows"></g>
+          </svg>
+          <button type="button" class="diag-entry" id="diagEntry" aria-expanded="false">关于弹性退休?</button>
+          <div class="diag-entry-panel" id="diagEntryPanel"><span class="diag-ep-line">关于弹性退休，指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</span><span class="diag-ep-line">想要办理弹性退休，前提必须缴满政策规定对应的养老保险最低年限。</span><span class="diag-ep-line">弹性退休、法定退休，两者要求的最低缴费年限标准并不相同。</span><span class="diag-ep-line">企业在岗职工：办理弹性退休，需要与用人单位协商一致，单位同意才可申报。</span><span class="diag-ep-line">灵活就业参保人员：本人自愿申请即可。</span><span class="diag-ep-cta">💡查询您个人是否满足年限条件，解锁查看详情</span></div>
+          <div id="diagNodes"></div>
+        </div>
+        <div class="diag-count-row" id="diagCountRow" style="display:none;">
+          <div class="diag-count-num" id="diagCountNum">15</div>
+          <div class="diag-count-label">秒后收起预览<br><b>点击下方按钮查看完整详情</b></div>
+        </div>
+        <div class="diag-quota-note" id="diagQuotaNote" style="display:none;"></div>
+        <div class="diag-cta-wrap">
+          <button type="button" class="diag-cta-btn" id="diagDetailBtn">查看详情</button>
+        </div>
       </div>
 
       <!-- 结论文字 -->
@@ -4943,6 +5098,487 @@
     $('timeline').innerHTML = html;
     var tlWrap = $('retireTimelineWrap');
     if (tlWrap) tlWrap.style.display = 'block';
+
+    /* ★ 职工板块一期：把 nodes 构造结果「喂」给对角线视图复用。
+       本函数仍是节点数据的唯一生产者（single source of truth），
+       绝不复制一份 nodes 构造逻辑到别处。 */
+    try {
+      window.__tlNodes = nodes;
+      if (typeof renderDiagonal === 'function') {
+        renderDiagonal(nodes, c);
+      }
+    } catch (eDiag) { console.error('renderDiagonal bridge:', eDiag); }
+  }
+
+  /* ==================================================================== */
+  /*   职工板块一期 · 对角线退休时间主线                                     */
+  /*   ------------------------------------------------------------------ */
+  /*   设计约束（务必保持）：                                              */
+  /*   1. 本模块只做「渲染 + 门禁」，绝不复制 renderTimeline 的节点构造     */
+  /*      逻辑；节点数据统一由 window.__tlNodes 传入。                     */
+  /*   2. 旧横向时间轴（#retireTimelineWrap）与明细表（#resultTableSection）*/
+  /*      DOM / 代码 / CSS 全部保留，仅「临时隐藏」display:none，可一键切回。*/
+  /*   3. 全站禁用红色；提示一律走浅蓝系（#1d4ed8 字 / #eff6ff 底）。      */
+  /*   4. localStorage 全部 try/catch 静默降级，禁用存储时不影响主流程。    */
+  /*   5. 本期不做真实支付：付费弹窗纯 UI 占位。                          */
+  /* ==================================================================== */
+
+  /** 免费额度：单浏览器（localStorage 所在 profile）每自然日 3 次对角线 15 秒预览。 */
+  var DIAG_DAILY_QUOTA = 3;
+  var DIAG_PREVIEW_SECONDS = 15;
+  var DIAG_KEY_QUOTA = (LS_PREFIX + 'diag_quota');
+  var DIAG_KEY_DEV = (LS_PREFIX + 'diag_dev_mode');
+
+  /** 计时器句柄（模块级单例，避免多路径重复计时）。 */
+  var _diagTimer = null;
+  var _diagRemain = 0;
+  /** 是否处于「对角线预览」流程：仅由 enterDiagonalPreview 置位，
+   *  由 renderDiagonal 消费。避免被动重算误扣额度。 */
+  var _diagPreviewActive = false;
+
+  /* ---- 开发者调试开关（网址后加 ?dev=1 开启 / ?dev=0 关闭）--------------
+     本机唯一的调试者：每日 3 次免费预览额度会被调试迅速耗尽，导致对角线
+     区块不再渲染，把开发者自己锁在门外。此开关仅供本机调试使用：
+       开启 → 不消耗免费额度、额度耗尽也照常渲染对角线、不启动 15 秒自动收起；
+       关闭 → 行为与普通用户逐字一致。
+     开关由 URL 查询参数控制并持久化到本机（键 pension_mobile_dev_mode），
+     之后即使不带参数也持续生效；?dev=0 关闭并清除标记。
+     纯客户端本地行为，不引入任何外链或服务端交互（保持零外链）。 */
+  var _diagDevMode = false;
+
+  /** 读取 URL 查询参数 dev 的值（兼容与其它查询参数并存；无该参数则返回 null）。 */
+  function diagDevParamValue() {
+    var s = String((window.location && window.location.search) || '');
+    try {
+      if (typeof URLSearchParams === 'function') {
+        var u = new URLSearchParams(s);
+        return u.has('dev') ? u.get('dev') : null;
+      }
+    } catch (e) {}
+    try {
+      var m = /[?&]dev=([^&#]*)/.exec(s);
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e2) {}
+    return null;
+  }
+
+  /** 开发者模式是否生效。 */
+  function diagDevOn() { return _diagDevMode === true; }
+
+  /** 初始化开发者开关：先恢复本机状态，再按 URL 参数覆盖。
+   *  ?dev=1 → 开启并持久化；?dev=0 → 关闭并清除；无参数 → 沿用本机状态。 */
+  function diagInitDevMode() {
+    var saved = null;
+    try { saved = localStorage.getItem(DIAG_KEY_DEV); } catch (e) { saved = null; }
+    _diagDevMode = (saved === '1');
+    var v = diagDevParamValue();
+    if (v === '1') {
+      _diagDevMode = true;
+      try { localStorage.setItem(DIAG_KEY_DEV, '1'); } catch (e2) {}
+    } else if (v === '0') {
+      _diagDevMode = false;
+      try { localStorage.removeItem(DIAG_KEY_DEV); } catch (e3) {}
+    }
+    return _diagDevMode;
+  }
+
+  // 随页面加载立即生效（此后 enterDiagonalPreview / renderDiagonal 均按此判定）。
+  diagInitDevMode();
+
+  /** 本地自然日字符串（本地时区 年-月-日）。 */
+  function diagToday() {
+    var d = new Date();
+    var m = d.getMonth() + 1;
+    var day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (day < 10 ? '0' + day : '' + day);
+  }
+
+  /** 读取额度状态；跨自然日自动重置。返回 {date, used, remaining}。
+   *  禁用存储时降级：返回 {date:今天, used:0, remaining:3}（当次会话内不拦截）。 */
+  function diagReadQuota() {
+    var today = diagToday();
+    var raw = null;
+    try { raw = localStorage.getItem(DIAG_KEY_QUOTA); } catch (e) { raw = null; }
+    var q = null;
+    if (raw) { try { q = JSON.parse(raw); } catch (e2) { q = null; } }
+    if (!q || typeof q !== 'object' || q.date !== today || typeof q.used !== 'number') {
+      // 未初始化 / 非法 / 跨日 → 重置
+      q = { date: today, used: 0 };
+    }
+    q.used = Math.max(0, Math.min(DIAG_DAILY_QUOTA, q.used));
+    try { localStorage.setItem(DIAG_KEY_QUOTA, JSON.stringify(q)); }
+    catch (e3) { /* 存储禁用：当次会话不拦截 */ }
+    var remaining = Math.max(0, DIAG_DAILY_QUOTA - q.used);
+    return { date: q.date, used: q.used, remaining: remaining };
+  }
+
+  /** 消耗一次额度；返回消耗后的 {date, used, remaining}。 */
+  function diagConsumeQuota() {
+    var q = diagReadQuota();
+    if (q.remaining > 0) {
+      q.used += 1;
+      q.remaining -= 1;
+      try { localStorage.setItem(DIAG_KEY_QUOTA, JSON.stringify({ date: q.date, used: q.used })); }
+      catch (e) { /* 存储禁用：当次会话不拦截 */ }
+    }
+    return q;
+  }
+
+  /** 停止当前倒计时（若在跑）。 */
+  function diagStopCountdown() {
+    if (_diagTimer !== null) {
+      try { clearInterval(_diagTimer); } catch (e) {}
+      _diagTimer = null;
+    }
+    _diagRemain = 0;
+  }
+
+  /** 隐藏对角线视图（清空节点），仅保留查看详情按钮所在区块。
+   *  需求 3-B：15 秒走完 → 对角线停止渲染、视图清空消失。 */
+  function diagClearView() {
+    var wrap = $('diagWrap');
+    if (wrap) { wrap.style.display = 'none'; }
+    var nodesBox = $('diagNodes');
+    if (nodesBox) { nodesBox.innerHTML = ''; }
+    var cr = $('diagCountRow');
+    if (cr) { cr.style.display = 'none'; }
+    // 保持「对角线模式」：旧横向时间轴 / 明细表继续隐藏，只留按钮
+    diagApplyHideLegacy();
+  }
+
+  /** 显示 / 刷新额度提示条（浅蓝系）。 */
+  function diagShowQuotaNote(remaining) {
+    var el = $('diagQuotaNote');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = '今日剩余免费预览额度：' + remaining + ' / ' + DIAG_DAILY_QUOTA + ' 次（每日零点重置）';
+  }
+
+  /** 开发者模式提示条（复用 .diag-quota-note 的浅蓝样式，禁红）。
+   *  仅在开发者模式下替代额度提示，告知当前处于调试态。 */
+  function diagShowDevNote() {
+    var el = $('diagQuotaNote');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = '开发者模式已开启：不消耗免费额度、对角线不自动收起（在网址后加 ?dev=0 可关闭）';
+  }
+
+  /** 渲染 15 秒可视化倒计时。到 0 → 清空视图、仅留按钮。 */
+  function diagStartCountdown() {
+    diagStopCountdown();
+    var numEl = $('diagCountNum');
+    var row = $('diagCountRow');
+    if (row) row.style.display = 'flex';
+    _diagRemain = DIAG_PREVIEW_SECONDS;
+    if (numEl) { numEl.textContent = String(_diagRemain); numEl.className = 'diag-count-num'; }
+    _diagTimer = setInterval(function () {
+      _diagRemain -= 1;
+      if (_diagRemain <= 0) {
+        diagStopCountdown();
+        if (numEl) numEl.textContent = '0';
+        diagClearView();
+        return;
+      }
+      if (numEl) {
+        numEl.textContent = String(_diagRemain);
+        // 仅做一次缩放脉冲，不做任何渐显 / 遮罩 / 模糊
+        numEl.className = 'diag-count-num tick';
+        setTimeout(function () { if (numEl && numEl.className === 'diag-count-num tick') numEl.className = 'diag-count-num'; }, 150);
+      }
+    }, 1000);
+  }
+
+  /** 付费占位弹窗（独立于专业版 paywall，纯 UI）。需求 3-A / 3-B 统一入口。 */
+  function diagOpenPayPlaceholder() {
+    var html =
+      '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:8px;">🔓 查看完整测算详情</div>'
+      + '<div class="diag-pay-price">定价 2 元</div>'
+      + '<div class="diag-pay-msg">付费解锁功能将在微信小程序版本上线开放。暂未开通支付。</div>'
+      + '<div class="diag-pay-note">当前为预览版，完整退休规划详情（多方案对比、金额拆解、反推测算）将在小程序版开放。</div>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:14px;">'
+      + '<button type="button" onclick="wbCloseModal()" style="padding:9px 20px;font-size:14px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">我知道了</button>'
+      + '</div>';
+    wbOpenModal(html);
+  }
+
+  /** 绑定「查看详情」按钮（幂等，只绑一次）。 */
+  var _diagCtaBound = false;
+  function diagBindCta() {
+    if (_diagCtaBound) return;
+    var btn = $('diagDetailBtn');
+    if (!btn) return;
+    btn.onclick = function () {
+      // 提前点击 → 立即终止倒计时 → 弹付费占位弹窗
+      diagStopCountdown();
+      diagClearView();
+      diagOpenPayPlaceholder();
+    };
+    _diagCtaBound = true;
+  }
+
+  /** 绑定「关于弹性退休」入口按钮（幂等，只绑一次）：点击展开 / 收起说明面板。 */
+  var _diagEntryBound = false;
+  function diagBindEntry() {
+    if (_diagEntryBound) return;
+    var btn = $('diagEntry');
+    var panel = $('diagEntryPanel');
+    if (!btn || !panel) return;
+    btn.onclick = function () {
+      var on = panel.className.indexOf('show') < 0;
+      panel.className = on ? 'diag-entry-panel show' : 'diag-entry-panel';
+      btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    };
+    _diagEntryBound = true;
+  }
+
+  /** 对角线主渲染：消费 renderTimeline 产出的 nodes。
+   *  @param {!Array<!Object>} nodes 由 renderTimeline 构造并传入（非复制）。
+   *  @param {!Object} c compute 产物（用于取年龄等展示信息）。 */
+  /** 数值格式化：最多保留 3 位小数（去掉尾随 0），用于生成 SVG 坐标串。
+   *  @param {number} v 数值。
+   *  @return {string} 归一化后的数值字符串。 */
+  function diagNum(v) { return String(Math.round(v * 1000) / 1000); }
+
+  function renderDiagonal(nodes, c) {
+    diagBindCta();
+    diagBindEntry();
+
+    var section = $('diagSection');
+    if (!section) return;
+
+    // 仅当进入「对角线预览」流程时才消费额度并渲染，
+    // 避免实时输入 / setGender 等被动重算路径误扣额度（需求 4：提交参数才消耗）。
+    if (!_diagPreviewActive) {
+      return;
+    }
+    _diagPreviewActive = false;
+
+    // ★ 开发者模式：跳过额度门禁与扣减，额度耗尽也照常渲染（仅本机调试态）。
+    var devOn = diagDevOn();
+
+    // ★ 门禁：先读额度；未耗尽 → 消耗一次并预览；耗尽 → 不渲染对角线。
+    var quota = diagReadQuota();
+    if (!devOn && quota.remaining <= 0) {
+      // 需求 4：用完 → 无论任何参数，都不渲染对角线，直接展示【查看详情】按钮
+      section.style.display = 'block';
+      diagStopCountdown();
+      diagClearView();
+      diagShowQuotaNote(0);
+      return;
+    }
+    if (devOn) {
+      // 开发者模式：不扣额度，仅以浅蓝提示条告知当前处于调试态
+      section.style.display = 'block';
+      diagShowDevNote();
+    } else {
+      quota = diagConsumeQuota();
+      section.style.display = 'block';
+      diagShowQuotaNote(quota.remaining);
+    }
+
+    var list = (nodes || []).slice();
+    list.sort(function (a, b) { return a.order - b.order; });
+    var n = list.length;
+    if (n === 0) { diagClearView(); return; }
+
+    /* ---- 对角线几何：viewBox 332×820 的「真实像素」坐标系 ----
+       节点用百分比落位（left = x/332、top = y/820），与 SVG 曲线在任意画布宽度下
+       都严格重合（.diag-wrap 以 aspect-ratio 332/820 锁定比例）。 */
+    var DIAG_W = 332, DIAG_H = 820;
+    // 4 个基准落点（960×1920 设计稿实测，非试错）
+    var DIAG_POS = [
+      { x: 75,  y: 90  },
+      { x: 134, y: 289 },
+      { x: 158, y: 497 },
+      { x: 91,  y: 713 }
+    ];
+    // 首尾外延点：让 S 形曲线自然探出画布上下缘（与设计稿一致）
+    var DIAG_START = { x: -24, y: -6 };
+    var DIAG_END = { x: 58,  y: 836 };
+
+    var wrapEl = $('diagWrap');
+    if (wrapEl) wrapEl.style.display = 'block';
+    var box = $('diagNodes');
+    if (!box) return;
+
+    // 布点：n===4 用设计稿基准表；其余 n 沿首尾锚点等距内插（防御分支，保证不出画布）。
+    var anchors = [];
+    if (n === 4) {
+      anchors = DIAG_POS.slice(0, 4);
+    } else if (n === 1) {
+      anchors = [{ x: DIAG_POS[0].x, y: DIAG_POS[0].y }];
+    } else {
+      for (var q = 0; q < n; q += 1) {
+        var fq = q / (n - 1);
+        anchors.push({
+          x: DIAG_POS[0].x + (DIAG_POS[3].x - DIAG_POS[0].x) * fq,
+          y: DIAG_POS[0].y + (DIAG_POS[3].y - DIAG_POS[0].y) * fq
+        });
+      }
+    }
+
+    // Catmull-Rom → 三次贝塞尔：C1 = P1 + (P2-P0)/6、C2 = P2 - (P3-P1)/6。
+    var cpts = [DIAG_START].concat(anchors).concat([DIAG_END]);
+    var dStr = 'M ' + diagNum(cpts[0].x) + ' ' + diagNum(cpts[0].y);
+    for (var s = 0; s < cpts.length - 1; s += 1) {
+      var p0 = cpts[s - 1] || cpts[s];
+      var p1 = cpts[s];
+      var p2 = cpts[s + 1];
+      var p3 = cpts[s + 2] || cpts[s + 1];
+      var c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      var c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      dStr += ' C ' + diagNum(c1x) + ' ' + diagNum(c1y) + ' ' + diagNum(c2x) + ' ' + diagNum(c2y)
+        + ' ' + diagNum(p2.x) + ' ' + diagNum(p2.y);
+    }
+    var lineEl = $('diagLine');
+    if (lineEl) { lineEl.setAttribute('d', dStr); }
+
+    /* 红色方向箭头（n 个节点 ⇒ n−1 个）：相邻节点连线中点沿左下法线外移 26px，
+       指向下一节点。★ 零外链铁律：不使用 document.createElementNS（其首个参数是
+       SVG 命名空间 URI，会引入 http(s):// 字面量），改为字符串拼接后一次性写入
+       静态 <g id="diagArrows"> 的 innerHTML（与项目其它 box.innerHTML = html 一致）；
+       赋值即自动清空旧箭头，无需逐个 removeChild。 */
+    var gArrows = $('diagArrows');
+    if (gArrows) {
+      var arrHtml = '';
+      for (var ai = 0; ai < anchors.length - 1; ai += 1) {
+        var a1 = anchors[ai], a2 = anchors[ai + 1];
+        var mdx = (a1.x + a2.x) / 2, mdy = (a1.y + a2.y) / 2;
+        var vdx = a2.x - a1.x, vdy = a2.y - a1.y;
+        var vlen = Math.sqrt(vdx * vdx + vdy * vdy) || 1;
+        var ux = vdx / vlen, uy = vdy / vlen;
+        // 左下法线 = (-dy, dx) 归一化
+        var nx = -uy, ny = ux;
+        var ax = mdx + nx * 26, ay = mdy + ny * 26;
+        var ang = Math.atan2(vdy, vdx) * 180 / Math.PI;
+        // 箭头尺寸按 960 设计稿红像素团（53×78px²、面积 2014）换算到 332 系：
+        // 长约 27、宽约 18（上一版 15×11 偏小，已作废）。
+        arrHtml += '<path class="diag-arrow" fill="#ee5a5a" d="M0 -9 L27 0 L0 9 Z"'
+          + ' transform="translate(' + diagNum(ax) + ' ' + diagNum(ay) + ') rotate(' + diagNum(ang) + ')"/>';
+      }
+      gArrows.innerHTML = arrHtml;
+    }
+
+    // 标签胶囊偏移（贴圆外侧、避开右侧文字块与日期）：按序号给定 dx/dy（设计单位）。
+    // 索引 1（弹性最早）改到曲线左侧 —— 其日期行在圆点右侧上方，标签留在右侧会压住日期。
+    var LBL_DXY = [
+      { dx: 34, dy: -30 },
+      { dx: -60, dy: 0 },
+      { dx: -46, dy: -30 },
+      { dx: -45, dy: 0 }
+    ];
+    // 节点圆点核心色（设计稿实测值）
+    var DOT_COLOR = ['#0084c9', '#029c46', '#68d045', '#049947'];
+
+    var html = '';
+    for (var i = 0; i < n; i += 1) {
+      var nd = list[i];
+      var P = anchors[i];
+      var leftPct = (P.x / DIAG_W) * 100;
+      var topPct = (P.y / DIAG_H) * 100;
+      var tagLines = String(nd.tag || '').split('\n');
+      var ageLines = String(nd.age || '').split('\n');
+      // 日期行统一显示「年月」：起点节点（现在）的 tag 是状态词「当前」而非日期，
+      // 直接用 tag 会让它与其余节点（2040年6月…）格式割裂 ⇒ 回落 nd.ym。
+      var dateTxt = tagLines[0] || '';
+      if (!dateTxt || !/[0-9]{4}\s*年/.test(dateTxt)) {
+        dateTxt = (typeof ymText === 'function') ? ymText(nd.ym) : dateTxt;
+      }
+      /* ★ 日期去重：renderTimeline 里 age 的首行＝ymText(ym)，与第 1 行日期完全
+         相同（根因见 renderTimeline 的 age 构造）⇒ 第 2 行只取年龄（ageLines[1]），
+         不再重复年月。 */
+      var ageTxt = ageLines[1] || '';
+      var desc = diagDescOf(nd);
+      var dxy = (n === 4 && LBL_DXY[i]) ? LBL_DXY[i] : { dx: 0, dy: -30 };
+      var dotColor = (n === 4 && DOT_COLOR[i]) ? DOT_COLOR[i] : DOT_COLOR[1];
+      html += '<div class="diag-node" style="left:' + leftPct.toFixed(2) + '%;top:' + topPct.toFixed(2) + '%;">'
+        + '<div class="diag-dot" style="background:' + dotColor + ';"></div>'
+        + '<div class="diag-online" style="--dx:' + diagNum(dxy.dx) + ';--dy:' + diagNum(dxy.dy) + ';">' + esc(nd.name) + '</div>'
+        + '<div class="diag-txt">'
+        + '<div class="diag-date">' + esc(dateTxt) + '</div>'
+        + '<div class="diag-age">' + esc(ageTxt) + '</div>'
+        + (desc ? '<div class="diag-desc">' + esc(desc.text) + '</div>' : '')
+        + '</div>'
+        + '</div>';
+    }
+    box.innerHTML = html;
+
+    // 需求 2：展示对角线时，临时隐藏旧横向时间轴 + 明细表（DOM / 代码保留，可一键切回）
+    diagApplyHideLegacy();
+
+    // 需求 3：渲染完成后启动 15 秒可视化倒计时（开发者模式不启动，便于从容调试）
+    if (!devOn) { diagStartCountdown(); }
+  }
+  window.renderDiagonal = renderDiagonal;
+
+  /** 生成节点「说明行」文案（文字块第三行）。
+   *  动态优先、固定兜底：优先采用引擎给出的真实状态（nd.tag 里的状态词），
+   *  引擎未给出明确状态时才回落到固定政策口径。
+   *  只「消费」renderTimeline 产出的节点数据，不复制任何取数 / 计算逻辑。
+   *  @param {!Object} nd 单个节点。
+   *  @return {?{text:string,cls:string}} 无说明时返回 null。
+   */
+  function diagDescOf(nd) {
+    if (!nd) return null;
+    var tl = String(nd.tag || '').split('\n');
+    var state = '';
+    for (var z = 0; z < tl.length; z += 1) {
+      if (tl[z] && !/[0-9]{4}\s*年/.test(tl[z])) { state = tl[z]; }
+    }
+    if (nd.order === 0) { return null; }
+    if (nd.order === 1) {
+      if (state === '✓ 可领') { return { text: '可自愿提前申请', cls: 'ok' }; }
+      return { text: '条件可能未足', cls: 'hold' };
+    }
+    if (nd.order === 1.5) {
+      return state ? { text: state, cls: 'hold' } : null;
+    }
+    if (nd.order === 2) {
+      if (state === '✓ 可申请') { return { text: '可办理退休', cls: 'ok' }; }
+      // 产品定稿：无明确状态时不再输出第三行说明（原「达标即可办理」冗余，已删）。
+      return null;
+    }
+    if (nd.order === 3) { return { text: '可自愿选择', cls: 'hold' }; }
+    return null;
+  }
+
+
+  /** 进入「对角线模式」：给结果页挂 class，隐藏旧时间轴与明细表。 */
+  function diagApplyHideLegacy() {
+    var pr = $('page-result');
+    if (pr) pr.classList.add('diag-mode');
+    var tlWrap = $('retireTimelineWrap');
+    if (tlWrap) tlWrap.style.display = 'none';
+    var rts = $('resultTableSection');
+    if (rts) rts.style.display = 'none';
+  }
+
+  /** 统一门面：两条提交路径（runQuery / submitForm）都经此进入对角线预览逻辑。
+   *  只负责门禁判断与视图切换，不复制任何节点构造 / 计算方法。
+   *  @return {boolean} 是否仍持有可预览额度（true=已渲染或可渲染）。 */
+  function enterDiagonalPreview() {
+    var devOn = diagDevOn();
+    var q = diagReadQuota();
+    var section = $('diagSection');
+    if (!section) return false;
+    if (!devOn && q.remaining <= 0) {
+      // 额度耗尽：清空对角线，仅保留【查看详情】按钮（按钮已在 #diagSection 内）
+      _diagPreviewActive = false;
+      section.style.display = 'block';
+      diagStopCountdown();
+      diagClearView();
+      diagShowQuotaNote(0);
+      try { toast('今日对角线预览额度已用完，可点击「查看详情」了解完整功能'); } catch (e) {}
+      return false;
+    }
+    // 有额度：置位预览标记，等待 renderTimeline 的桥接调用 renderDiagonal 消费并渲染
+    diagStopCountdown();
+    _diagPreviewActive = true;
+    var wrapEl = $('diagWrap');
+    if (wrapEl) wrapEl.style.display = 'block';
+    var cr = $('diagCountRow');
+    if (cr) cr.style.display = 'none';
+    return true;
   }
 
   /** 结论区（对标13文件：表格下方一行提示）。
@@ -7114,6 +7750,8 @@
     state.liteMode = true;
     // 退出「查询（简版）」模式，恢复全版所有区块
     var pr0 = $('page-result'); if (pr0) pr0.classList.remove('query-mode');
+    // ★ 职工板块一期：提交即视为一次对角线预览请求（额度耗尽则不渲染对角线）
+    try { enterDiagonalPreview(); } catch (eDiagS) { console.error('submitForm diagonal:', eDiagS); }
     recompute();
     // 展示层：测算成功后留档一条历史记录（recompute 内 snapshotEntResult 已写好 __lastEntResult）。
     // 挂在提交成功分支而非 snapshotEntResult 内：后者会被实时输入的 recompute 反复调用，
@@ -7166,6 +7804,13 @@
       // 渲染干净表格 + 状态横幅
       renderTopBanner(c);
       renderTable(c);
+
+      // ★ 职工板块一期：优先渲染对角线时间主线（复用 renderTimeline 的节点数据）
+      //   先过统一门面判定额度，再调用 renderTimeline 产出 nodes 并由桥接触发 renderDiagonal。
+      try {
+        enterDiagonalPreview();
+        renderTimeline(c);
+      } catch (eDiagQ) { console.error('runQuery diagonal:', eDiagQ); }
 
       // 身份确认行（查询模式专属）
       var idEl = $('resIdentity');
@@ -9945,6 +10590,8 @@
       }
       if (errBox) { errBox.style.display = 'none'; errBox.innerHTML = ''; }
       if (typeof state !== 'undefined' && state) state.computedOnce = true;
+      // ★ 职工板块一期：简易查询同样优先渲染对角线（统一门面判定额度）
+      try { enterDiagonalPreview(); } catch (eDiagSS) { console.error('runSimpleQuery diagonal:', eDiagSS); }
       recompute();
       showPage('page-result');
       window.scrollTo(0, 0);
