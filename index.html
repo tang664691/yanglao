@@ -1949,7 +1949,10 @@
         <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
           <div class="field field-narrow" style="gap:3px;">
             <label for="splitIdCard">身份证号码（选填，自动带出性别与出生年月）</label>
-            <input type="text" id="splitIdCard" maxlength="18" placeholder="输入 18 位身份证号自动带出" autocomplete="off" style="padding:8px 12px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="splitIdCard" maxlength="18" placeholder="输入 18 位身份证号自动带出" autocomplete="off" style="flex:1 1 auto;min-width:0;padding:8px 12px;">
+              <button type="button" id="splitIdClear" style="display:none;flex:0 0 auto;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:8px 12px;font-size:13px;border-radius:8px;cursor:pointer;">清空</button>
+            </div>
             <div class="tip" id="splitIdHint" style="margin-top:2px;">不填也可以，直接在下面选。</div>
           </div>
           <div class="field" style="gap:3px;">
@@ -8612,13 +8615,40 @@
   /*     【v1.0.33】职工板块前置分流页（#page-split）交互                    */
   /* ==================================================================== */
 
-  /** 分流页 · 卡片 A：身份证一键解析，只回填本页的性别 / 出生年月。
-   *  不动主表单 #idCard（它带锁定/降级逻辑），两者互不影响。 */
+  /** 分流页 · 卡片 A：身份证一键解析。
+   *  解析成功 → 锁定本页 出生年月 + 性别（及身份证框只读），防止被手动改掉，失去一键解析意义；
+   *  清空身份证 → 解锁恢复可编辑（防解析错后用户无法手动修正）。
+   *  视觉置灰 + 浅蓝小注，遵循去红规范。身份类别不锁（身份证不含此信息，仍由用户选）。
+   *  不动主表单 #idCard（它带独立的锁定/降级逻辑），两者互不影响。 */
+  function lockSplitFieldsFromId() {
+    var by = $('splitBirthY'), bm = $('splitBirthM'), gr = $('splitGenderRow'), idEl = $('splitIdCard');
+    if (by) { by.disabled = true; by.style.background = '#f1f5f9'; by.style.color = '#94a3b8'; by.style.cursor = 'not-allowed'; }
+    if (bm) { bm.disabled = true; bm.style.background = '#f1f5f9'; bm.style.color = '#94a3b8'; bm.style.cursor = 'not-allowed'; }
+    var rs = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
+    for (var i = 0; i < rs.length; i += 1) rs[i].disabled = true;
+    if (gr) gr.style.opacity = '0.55';
+    if (idEl) { idEl.readOnly = true; idEl.style.background = '#f1f5f9'; idEl.style.color = '#94a3b8'; }
+    var clr = $('splitIdClear'); if (clr) clr.style.display = '';
+    var hint = $('splitIdHint');
+    if (hint) { hint.textContent = '已按身份证自动填入 · 如需修改请先清空身份证'; hint.style.color = '#1d4ed8'; }
+  }
+  function unlockSplitFieldsFromId() {
+    var by = $('splitBirthY'), bm = $('splitBirthM'), gr = $('splitGenderRow'), idEl = $('splitIdCard');
+    if (by) { by.disabled = false; by.style.background = ''; by.style.color = ''; by.style.cursor = ''; }
+    if (bm) { bm.disabled = false; bm.style.background = ''; bm.style.color = ''; bm.style.cursor = ''; }
+    var rs = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
+    for (var i = 0; i < rs.length; i += 1) rs[i].disabled = false;
+    if (gr) gr.style.opacity = '';
+    if (idEl) { idEl.readOnly = false; idEl.style.background = ''; idEl.style.color = ''; }
+    var clr = $('splitIdClear'); if (clr) clr.style.display = 'none';
+    var hint = $('splitIdHint');
+    if (hint) { hint.textContent = '不填也可以，直接在下面选。'; hint.style.color = ''; }
+  }
   function onSplitIdInput() {
     var hint = $('splitIdHint');
     var raw = (this && this.value) ? this.value : '';
     if (!raw) {
-      if (hint) { hint.textContent = '不填也可以，直接在下面选。'; hint.style.color = ''; }
+      unlockSplitFieldsFromId();
       return;
     }
     var res = parseIdCard(raw);
@@ -8628,8 +8658,9 @@
       if (bm) bm.value = res.m;
       var radios = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
       for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === res.gender);
-      if (hint) { hint.textContent = res.msg; hint.style.color = '#1d4ed8'; }
+      lockSplitFieldsFromId();
     } else {
+      unlockSplitFieldsFromId();
       if (hint) {
         hint.textContent = (res && res.msg) ? res.msg : '身份证号无法识别，请手动填写。';
         hint.style.color = '#1d4ed8';
@@ -8637,6 +8668,12 @@
     }
   }
   if ($('splitIdCard')) $('splitIdCard').addEventListener('input', onSplitIdInput);
+  if ($('splitIdClear')) $('splitIdClear').addEventListener('click', function () {
+    var idEl = $('splitIdCard');
+    if (idEl) { idEl.value = ''; idEl.readOnly = false; }
+    unlockSplitFieldsFromId();
+    if (idEl) idEl.focus();
+  });
 
   /** 【v1.0.34】卡片 A 提示条的默认态文案（与 HTML 里 #splitAHint 的初始内容一致）。
       用途：校验开始前先复位、提交成功后也复位，避免上一次的报错残留。 */
@@ -8694,8 +8731,27 @@
   }
   window.runSplitSimple = runSplitSimple;
 
-  /** 【v1.0.33】结果页「深度测算」入口：切深度模式回表单，已填数据保留（不 reset）。 */
+  /** 【v1.0.33→续】结果页「去测算养老金金额」入口：点击时实时把卡片 A 当前的
+   *  出生年月 / 性别 / 身份类别 移交到深度表单（不依赖提交 runSplitSimple 那次写回，规避链路断掉风险），
+   *  其余深度字段（首次/最后参保时间、累计已缴、视同缴费等）保持空白待填。
+   *  机关事业单位整套计算逻辑完全不动——此处只搬运选择值，不触碰任何引擎。 */
   function goDeepFromSimple() {
+    try {
+      var gEl = document.querySelector('#splitGenderRow input[name="splitGender"]:checked');
+      var gender = gEl ? gEl.value : '';
+      var byEl = $('splitBirthY'), bmEl = $('splitBirthM'), catEl = $('splitCategory');
+      var by = byEl ? byEl.value : '';
+      var bm = bmEl ? bmEl.value : '';
+      var cat = (catEl && catEl.value) ? catEl.value : 'ENT_W50';
+      if (gender) {
+        var radios = document.querySelectorAll('input[name="gender"]');
+        for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === gender);
+        if (typeof state !== 'undefined' && state) state.gender = gender;
+      }
+      if (by) $('birthY').value = by;
+      if (bm) $('birthM').value = bm;
+      if (cat) { $('category').value = cat; updateCategoryHint(); }
+    } catch (e) { console.error('goDeepFromSimple sync:', e); }
     try { setQueryMode('deep'); } catch (e) { console.error('goDeepFromSimple setQueryMode:', e); }
     showPage('page-input');
     showInputPane('pane-basic');
