@@ -1915,9 +1915,87 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.32 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.34 · 数据仅存本机</div>
 
 </div>
+</section>
+
+<!-- ==================================================================
+     PAGE 1.5 —— 职工板块前置分流页（v1.0.33）
+     点「职工养老保险」后先到这里二选一：
+       卡片 A：只填性别 + 出生年月 + 身份类别 → 出退休时间窗口（不算金额）
+       卡片 B：进原完整表单（page-input），可继续测算金额
+     ================================================================== -->
+<section class="page" id="page-split">
+  <!-- 【v1.0.34】仅本页收紧顶部留白：让卡片 B 的按钮进首屏；不缩小任何字号 -->
+  <div class="wrap" style="padding-top:8px;">
+    <button type="button" class="back-link" id="splitBackHome" style="cursor:pointer;background:none;border:none;color:#2563eb;font-size:15px;font-weight:700;padding:6px 0;margin-bottom:4px;text-decoration:none;">← 返回首页</button>
+
+    <div style="max-width:720px;margin:0 auto 0;">
+      <div style="text-align:center;margin-bottom:6px;">
+        <div style="font-size:21px;font-weight:800;color:#1f2937;letter-spacing:.5px;">职工养老保险</div>
+        <div style="margin-top:3px;font-size:14px;color:#64748b;line-height:1.6;">先选一个方向：只想看退休时间，还是要把金额一起算出来。</div>
+      </div>
+
+      <!-- 卡片 A：极简录入 → 退休时间窗口 -->
+      <div id="splitCardA" style="background:#fff;border:1.5px solid #c4d0dc;border-radius:12px;padding:8px 14px;margin-bottom:6px;box-shadow:0 2px 8px rgba(20,40,80,.05);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">A</div>
+          <div style="min-width:0;">
+            <div style="font-size:18px;font-weight:800;color:#1f2937;">我什么时候退休</div>
+            <div style="margin-top:1px;font-size:14px;color:#475569;line-height:1.4;">填性别、出生年月、身份类别，看退休时间窗口和最低缴费年限。</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+          <div class="field field-narrow" style="gap:3px;">
+            <label for="splitIdCard">身份证号码（选填，自动带出性别与出生年月）</label>
+            <input type="text" id="splitIdCard" maxlength="18" placeholder="输入 18 位身份证号自动带出" autocomplete="off" style="padding:8px 12px;">
+            <div class="tip" id="splitIdHint" style="margin-top:2px;">不填也可以，直接在下面选。</div>
+          </div>
+          <div class="field" style="gap:3px;">
+            <label>出生年月</label>
+            <div class="date-row">
+              <input type="number" id="splitBirthY" min="1940" max="2015" placeholder="年" style="padding:8px 6px;">
+              <input type="number" id="splitBirthM" min="1" max="12" placeholder="月" style="padding:8px 6px;">
+            </div>
+          </div>
+          <div class="field field-narrow" style="gap:3px;">
+            <label>性别</label>
+            <div class="radio-row" id="splitGenderRow" style="padding-top:0;">
+              <label><input type="radio" name="splitGender" value="M"> 男</label>
+              <label><input type="radio" name="splitGender" value="F"> 女</label>
+            </div>
+          </div>
+          <div class="field" style="gap:3px;">
+            <label for="splitCategory">身份类别（决定原法定退休年龄）</label>
+            <select id="splitCategory" style="padding:8px 12px;">
+              <option value="ENT_W50">企业职工（生产/操作岗，女50·男60）</option>
+              <option value="ENT_W55">企业职工（管理/技术岗，女55·男60）</option>
+              <option value="FLEX55">灵活就业人员（女55·男60）</option>
+              <option value="GOV_W50">机关事业单位（生产/操作岗，女50·男60）</option>
+              <option value="GOV">机关事业单位（管理/技术岗，女55·男60）</option>
+            </select>
+          </div>
+          <button type="button" id="splitGoA" style="background:#2563eb;color:#fff;border:none;padding:11px 26px;font-size:15px;font-weight:800;border-radius:9px;cursor:pointer;align-self:flex-start;">查看我的退休时间 →</button>
+          <div class="tip" id="splitAHint" style="color:#475569;margin-top:2px;">这里只算退休时间，不含养老金金额。</div>
+        </div>
+      </div>
+
+      <!-- 卡片 B：完整表单 → 可算金额 -->
+      <!-- 【v1.0.34】卡片 B 改紧凑横条：标题在左、按钮在右，一行内；窄屏放不下时按钮优雅换到下一行。
+           字号一律未减小（标题 18px / 说明 14px / 按钮 15px，与改前完全一致）。 -->
+      <div id="splitCardB" style="background:#fff;border:1.5px solid #c4d0dc;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(20,40,80,.05);">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">B</div>
+          <div style="flex:1 1 auto;min-width:0;max-width:calc(100% - 48px);">
+            <div style="font-size:18px;font-weight:800;color:#1f2937;">我的退休测算</div>
+            <div style="margin-top:1px;font-size:14px;color:#475569;line-height:1.4;">填参保与缴费数据，测算每月能领多少。</div>
+          </div>
+          <button type="button" id="splitGoB" style="flex:0 0 auto;background:#0d9488;color:#fff;border:none;padding:11px 20px;font-size:15px;font-weight:800;border-radius:9px;cursor:pointer;white-space:nowrap;">填写参保信息并测算 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ==================================================================
@@ -2029,14 +2107,6 @@
               <option value="GOV_W50">机关事业单位（生产/操作岗，女50·男60）</option>
               <option value="GOV">机关事业单位（管理/技术岗，女55·男60）</option>
             </select>
-            <!-- ★ 查询深度二选一：简易查询（直接弹时间轴+最低年限）/ 详细查询（填参保数据算金额） -->
-            <div id="queryModeRow" style="display:none;margin-top:10px;">
-              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <button type="button" id="modeSimpleBtn" style="padding:8px 18px;font-size:14px;font-weight:700;border:1.5px solid #10b981;background:#10b981;color:#fff;border-radius:8px;cursor:pointer;white-space:nowrap;">简易查询</button>
-                <button type="button" id="modeDeepBtn" style="padding:8px 18px;font-size:14px;font-weight:700;border:1.5px solid #94a3b8;background:#fff;color:#475569;border-radius:8px;cursor:pointer;white-space:nowrap;">详细查询</button>
-              </div>
-              <div id="queryModeHint" style="margin-top:6px;font-size:13px;color:#64748b;line-height:1.6;">填「出生年月+性别+身份」，点<b>简易查询</b>直接看退休时间；想算金额请点<b>详细查询</b>并补全参保时间。</div>
-            </div>
             <div id="categoryHint" style="margin-top:6px;font-size:13px;color:#0d9488;line-height:1.5;"></div>
           </div>
           <div class="field">
@@ -2678,6 +2748,13 @@
         <div class="diag-cta-wrap">
           <button type="button" class="diag-cta-btn" id="diagDetailBtn">查看详情</button>
         </div>
+      </div>
+      <!-- 【v1.0.33】简易查询结果页底部的「深度测算」入口：表单内二选一已删，
+           卡片 A 必须留一条继续测算金额的路，否则成死胡同。默认隐藏，
+           由 renderEstimate 在 state.queryMode==='simple' 时显示。 -->
+      <div id="simpleDeepEntry" style="display:none;margin:16px 0 4px;padding:14px 16px;background:#f0f9ff;border:1.5px solid #bfdbfe;border-radius:12px;text-align:center;">
+        <div style="font-size:14px;color:#1e3a8a;line-height:1.7;">想算每月能领多少？继续填参保信息即可测算。</div>
+        <button type="button" id="simpleDeepBtn" style="margin-top:10px;background:#1d4ed8;color:#fff;border:none;padding:10px 24px;font-size:15px;font-weight:800;border-radius:9px;cursor:pointer;">去测算养老金金额</button>
       </div>
 
       <!-- 结论文字 -->
@@ -4949,6 +5026,21 @@
   function renderTopBanner(c) {
     var el = $('retireStatus');
     if (!el) return;
+    /* 【v1.0.34】卡片 A（state.queryMode==='simple'）不显示「最低缴费年限未达标」：
+       卡片 A 只采集性别 / 出生年月 / 身份类别，从不问「累计已缴多少」，
+       gapMonthsEarly 恒 > 0 ⇒ 这条恒为「未达标」，属错误文案。
+       只隐藏简易模式这一条；卡片 B / 深度测算（用户确填了已缴，判定有意义）
+       完全保持原样。
+       实现方式刻意选「清内容 + display:none」而不是移除 DOM 节点：
+       #retireStatus 在 P_RESULT 白名单里，移除节点会波及白名单逻辑。 */
+    var _liteBanner = !!(typeof state !== 'undefined' && state && state.queryMode === 'simple');
+    if (_liteBanner) {
+      el.className = 'retire-status';
+      el.innerHTML = '';
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = '';
     // 以「弹性最早退休」门槛为领取资格基准（门槛更低）；法定退休年门槛见下方明细
     if (c.gapMonthsEarly > 0) {
       el.className = 'retire-status notyet';
@@ -7394,7 +7486,7 @@
   /*                              页面导航                                 */
   /* ==================================================================== */
 
-  var PAGES = ['page-home', 'page-input', 'page-result', 'page-plan', 'page-compare'];
+  var PAGES = ['page-home', 'page-split', 'page-input', 'page-result', 'page-plan', 'page-compare'];
   var STEP_PAGES = ['page-input', 'page-result', 'page-plan'];
   var _pageHistory = [];         /* 【Ph30】页面导航历史栈（纯展示层，供右上角「上一步」回退） */
   var _suppressBackPush = false; /* 回退内部调用 showPage 时不重复压栈 */
@@ -7483,7 +7575,7 @@
   function updateBackBtn(id) {
     var b = $('btnGoBack');
     if (!b) return;
-    var canGoBack = (id === 'page-input' || _pageHistory.length > 0);
+    var canGoBack = (id === 'page-input' || id === 'page-split' || _pageHistory.length > 0);
     b.style.display = (id === 'page-home') ? 'none' : (canGoBack ? 'block' : 'none');
   }
   /** 【Ph30】回退：直接切页（不重算、不重置 → 表单数据零丢失）。
@@ -7495,6 +7587,21 @@
   function goBackPage() {
     var curEl = document.querySelector('.page.show');
     var curId = curEl ? curEl.id : '';
+    /* 【v1.0.33】分流页：它的「上一步」语义 = 回首页（保数据）。
+       分流页由首页直达、首页不入栈，此时历史栈为空，若不特判则按钮点了没反应。
+       栈非空时（如从结果页回退到分流页）仍优先按栈回退。 */
+    if (curId === 'page-split') {
+      if (_pageHistory.length) {
+        var _sp = _pageHistory.pop();
+        _suppressBackPush = true;
+        try { showPage(_sp); } finally { _suppressBackPush = false; }
+      } else if (typeof backHomeKeepData === 'function') {
+        backHomeKeepData();
+      } else {
+        showPage('page-home');
+      }
+      return;
+    }
     if (curId === 'page-input') {
       focusFieldForFix();
       return;
@@ -7639,6 +7746,9 @@
     if (typeof state !== 'undefined' && state && state.queryMode === 'simple') {
       setQueryMode('deep');
     }
+    // 【v1.0.33】已走深度测算，结果页「去测算养老金金额」入口不再需要（显式隐藏兜底）
+    var _sdeOnSubmit = $('simpleDeepEntry');
+    if (_sdeOnSubmit) _sdeOnSubmit.style.display = 'none';
     // 不再自动互推：三时间字段由用户手动输入 +「按参保区间」按钮确认，避免缠绕
     var f = readForm();
     var errs = validateForm(f);
@@ -8433,14 +8543,25 @@
   /*                              事件绑定                                 */
   /* ==================================================================== */
 
-  /** 首页入口：职工养老保险。 */
+  /** 首页入口：职工养老保险。
+   *  【v1.0.33】先落「前置分流页」二选一（卡片 A 只看退休时间 / 卡片 B 进完整表单），
+   *  不再直接把用户甩进表单。两个入口 #entryStaff、#btnHomeStart 共用本函数。 */
   function enterStaff() {
+    try { showPage('page-split'); } catch (e) { console.error('enterStaff showPage:', e); }
+    try { window.scrollTo(0, 0); } catch (e2) {}
+  }
+
+  /** 【v1.0.33】分流页 · 卡片 B「我的退休测算」：原「直接进入表单」逻辑 + 显式深度模式。
+   *  表单存在的意义就是深度测算（表单内二选一已删），故显式 setQueryMode('deep')。 */
+  function enterStaffDeep() {
     $('category').value = 'ENT_W50';
-    updateCategoryHint(); // 切换表单显示
+    updateCategoryHint(); // 切换表单显示（.value 赋值不触发 change，必须显式调用）
+    try { setQueryMode('deep'); } catch (eQ) { console.error('enterStaffDeep setQueryMode:', eQ); }
     showPage('page-input');
     showInputPane('pane-basic');
-    try { recompute(); } catch(e) { console.error('enterStaff recompute:', e); }
+    try { recompute(); } catch(e) { console.error('enterStaffDeep recompute:', e); }
   }
+  window.enterStaffDeep = enterStaffDeep;
 
   /** 首页入口：机关事业单位。 */
   function enterInstitution() {
@@ -8486,6 +8607,106 @@
   bindActivate($('btnHomeStart'), enterStaff);
   bindActivate($('reverseEntry'), function () { toggleReverse(); });
   bindActivate($('planReverseEntry'), enterReverse);
+
+  /* ==================================================================== */
+  /*     【v1.0.33】职工板块前置分流页（#page-split）交互                    */
+  /* ==================================================================== */
+
+  /** 分流页 · 卡片 A：身份证一键解析，只回填本页的性别 / 出生年月。
+   *  不动主表单 #idCard（它带锁定/降级逻辑），两者互不影响。 */
+  function onSplitIdInput() {
+    var hint = $('splitIdHint');
+    var raw = (this && this.value) ? this.value : '';
+    if (!raw) {
+      if (hint) { hint.textContent = '不填也可以，直接在下面选。'; hint.style.color = ''; }
+      return;
+    }
+    var res = parseIdCard(raw);
+    if (res && res.ok) {
+      var by = $('splitBirthY'), bm = $('splitBirthM');
+      if (by) by.value = res.y;
+      if (bm) bm.value = res.m;
+      var radios = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
+      for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === res.gender);
+      if (hint) { hint.textContent = res.msg; hint.style.color = '#1d4ed8'; }
+    } else {
+      if (hint) {
+        hint.textContent = (res && res.msg) ? res.msg : '身份证号无法识别，请手动填写。';
+        hint.style.color = '#1d4ed8';
+      }
+    }
+  }
+  if ($('splitIdCard')) $('splitIdCard').addEventListener('input', onSplitIdInput);
+
+  /** 【v1.0.34】卡片 A 提示条的默认态文案（与 HTML 里 #splitAHint 的初始内容一致）。
+      用途：校验开始前先复位、提交成功后也复位，避免上一次的报错残留。 */
+  var SPLIT_A_HINT_DEFAULT = '这里只算退休时间，不含养老金金额。';
+  function resetSplitAHint(hint) {
+    if (!hint) return;
+    hint.textContent = SPLIT_A_HINT_DEFAULT;
+    hint.style.color = '#475569';
+  }
+
+  /**
+   * 分流页 · 卡片 A 提交：把极简录入值写回主表单，再走既有「简易查询」通道
+   * （runSimpleQuery：setQueryMode('simple') → 校验 → 对角线预览 → 结果页）。
+   * 本函数只做字段搬运，不新增 / 不改动任何计算逻辑。
+   */
+  function runSplitSimple() {
+    try {
+      var gEl = document.querySelector('#splitGenderRow input[name="splitGender"]:checked');
+      var gender = gEl ? gEl.value : '';
+      var byEl = $('splitBirthY'), bmEl = $('splitBirthM'), catEl = $('splitCategory');
+      var by = byEl ? byEl.value : '';
+      var bm = bmEl ? bmEl.value : '';
+      var cat = (catEl && catEl.value) ? catEl.value : 'ENT_W50';
+      var hint = $('splitAHint');
+      /* 【v1.0.34】校验开始前先复位为默认态：上一轮被拦留下的报错不再残留。 */
+      resetSplitAHint(hint);
+      if (!gender) {
+        if (hint) { hint.textContent = '请先选择性别。'; hint.style.color = '#1d4ed8'; }
+        toast('请选择性别');
+        return false;
+      }
+      if (!by || !bm) {
+        if (hint) { hint.textContent = '请先填写出生年月。'; hint.style.color = '#1d4ed8'; }
+        toast('请填写出生年月');
+        return false;
+      }
+      // 写回主表单：主表单仍是唯一数据源，readForm / validateForm 全部复用
+      var radios = document.querySelectorAll('input[name="gender"]');
+      for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === gender);
+      if (typeof state !== 'undefined' && state) state.gender = gender;
+      $('birthY').value = by;
+      $('birthM').value = bm;
+      $('category').value = cat;
+      // ★ 给 select 赋 .value 不触发 change，必须显式调用，否则企业/机关表单显隐会错乱
+      updateCategoryHint();
+      /* 【v1.0.34】提交成功同样复位：下一次回到分流页时提示条为默认文案。 */
+      var _splitOk = runSimpleQuery();
+      if (_splitOk) resetSplitAHint(hint);
+      return _splitOk;
+    } catch (e) {
+      console.error('runSplitSimple error:', e);
+      toast('查询出错：' + e.message);
+      return false;
+    }
+  }
+  window.runSplitSimple = runSplitSimple;
+
+  /** 【v1.0.33】结果页「深度测算」入口：切深度模式回表单，已填数据保留（不 reset）。 */
+  function goDeepFromSimple() {
+    try { setQueryMode('deep'); } catch (e) { console.error('goDeepFromSimple setQueryMode:', e); }
+    showPage('page-input');
+    showInputPane('pane-basic');
+  }
+  window.goDeepFromSimple = goDeepFromSimple;
+
+  bindActivate($('splitGoA'), runSplitSimple);
+  bindActivate($('splitGoB'), enterStaffDeep);
+  if ($('splitBackHome')) $('splitBackHome').addEventListener('click', backHomeKeepData);
+  if ($('simpleDeepEntry')) $('simpleDeepEntry').addEventListener('click', goDeepFromSimple);
+  if ($('simpleDeepBtn')) $('simpleDeepBtn').addEventListener('click', goDeepFromSimple);
 
 
     // ---- 缴费关键数据：省份可搜索下拉框 + 市联动 ----
@@ -10495,6 +10716,11 @@
         : '已切换为<b>详细查询</b>：请补全 <b>参保时间与累计已缴时间</b>，再点「确认并测算」。';
     }
 
+    /* 【v1.0.33】结果页底部「深度测算」入口（#simpleDeepEntry）：仅简易模式露出。
+       简易查询结果只给退休时间，必须留一条进完整表单算金额的路，否则卡片 A 成死胡同。 */
+    var sde = $('simpleDeepEntry');
+    if (sde) sde.style.display = simple ? 'block' : 'none';
+
     // 模式变了立刻重刷步骤条：简易模式要把第 3 步「退休规划」置灰点不动
     if (typeof syncSteppers === 'function') {
       try { syncSteppers(typeof curStepIdx === 'number' ? curStepIdx : 0); } catch (e) {}
@@ -10521,6 +10747,9 @@
       // ★ 职工板块一期：简易查询同样优先渲染对角线（统一门面置位预览标记）
       try { enterDiagonalPreview(); } catch (eDiagSS) { console.error('runSimpleQuery diagonal:', eDiagSS); }
       recompute();
+      // 【v1.0.33】兜底：结果页底部「深度测算」入口必须在简易结果页可见
+      var _sdeRS = $('simpleDeepEntry');
+      if (_sdeRS) _sdeRS.style.display = 'block';
       showPage('page-result');
       window.scrollTo(0, 0);
       return true;
@@ -10554,8 +10783,9 @@
   $('category').addEventListener('change', function () {
     var row = $('queryModeRow');
     if (row) row.style.display = 'block';
-    // 选定身份类别后，未点过任何查询按钮时默认进入简易查询状态（参保时间板块置灰不可填）
-    if (!state.queryMode) state.queryMode = 'simple';
+    // 【v1.0.33】表单内「简易/详细」二选一已删除：能进到表单就是为了深度测算，
+    // 故未点过任何查询按钮时默认进入深度模式（参保时间板块保持可填，不置灰）。
+    if (!state.queryMode) state.queryMode = 'deep';
     setQueryMode(state.queryMode);
   });
 
@@ -13147,7 +13377,13 @@
   var keyX = document.getElementById('npKeyX');
   var keyClear = document.getElementById('npKeyClear');
 
-  var ID_CARD_IDS = { idCard: 1, govIdCard: 1 };
+  /* 【v1.0.34】新增 splitIdCard（分流页卡片 A 的身份证框）：
+     原本它是 type="text" 又不在本名单里，numericTarget() 只认 type=number，
+     导致在分流页点身份证框时应用自带数字键盘不出现（弹的是系统输入法）。
+     登记后连带生效：showPad() 显示 X 键与「清零」键、applyKey 身份证语音播报、
+     lockNative() 压住系统输入法；写入后 fireInput() 仍派发 input 事件，
+     卡片 A 的 onSplitIdInput() 解析回填链路不变。 */
+  var ID_CARD_IDS = { idCard: 1, govIdCard: 1, splitIdCard: 1 };
   var active = null;
   var lastTouch = 0;
   var savedBodyPad = null;
@@ -13387,8 +13623,24 @@
     return true;
   }
 
+  /** 【v1.0.34】「确认」键跳格的搜索范围。
+      · 输入框在 #page-input 内 → 仍用 #page-input（原行为，一步不差）；
+      · 不在其中（v1.0.33 新增的 #page-split 分流页）→ 用它自己所在的
+        页面容器 section.page，使「确认」在本页内按 DOM 顺序链式推进；
+      · 两者都取不到 → 回落到 #page-input，此时 indexOf(el) 为 -1 不跳，
+        与原行为完全一致。
+     刻意只认 <input type=number>（不跳 select，避免弹出原生选择器），
+     跳过 disabled / 隐藏元素，末格回落到「收键盘」——这些判定一律不动。 */
+  function npScopeFor(el) {
+    var pi = document.getElementById('page-input');
+    if (!pi || !el || typeof el.contains !== 'function') return pi;
+    if (pi === el || pi.contains(el)) return pi;
+    var own = (typeof el.closest === 'function') ? el.closest('.page') : null;
+    return own || pi;
+  }
+
   function advanceToNextNumberField(el) {
-    var scope = document.getElementById('page-input');
+    var scope = npScopeFor(el);
     if (!scope) return false;
     var all = scope.querySelectorAll('input');
     var fields = [];
