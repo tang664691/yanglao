@@ -945,7 +945,15 @@
   /* 面板正文行：每条文案独占一行，行间留出可读间距；text-wrap:pretty 防段落末行孤字。 */
   .diag-ep-line{display:block;margin-bottom:4px;text-wrap:pretty;}
   /* 面板引流 CTA 行：绿色加重 + 上方 1px 分隔线拉开间距（纯展示，无交互/外链）；text-wrap:balance 均衡折行消除孤字。 */
-  .diag-ep-cta{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #c9e7d6;color:#01874a;font-weight:900;text-wrap:balance;}
+  .diag-ep-cta{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #c9e7d6;color:#01874a;font-weight:900;text-wrap:balance;cursor:pointer;}
+  /* 「您的专属答案」四行卡：极简、白底黑字、禁红；分隔/强调仅用浅蓝系
+     (#1d4ed8/#eff6ff/#dbeafe) 与中性灰 (#e2e8f0/#0f172a/#334155)。 */
+  .diag-ans{margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0;}
+  .diag-ans-title{font-size:11px;font-weight:900;color:#334155;letter-spacing:.5px;margin-bottom:4px;text-wrap:pretty;}
+  .diag-ans-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;line-height:1.7;text-wrap:pretty;}
+  .diag-ans-k{color:#334155;font-weight:600;}
+  .diag-ans-v{font-weight:900;color:#1d4ed8;font-variant-numeric:tabular-nums;}
+  .diag-ans-v.done{color:#0f172a;}
   /* 窄屏等比缩放：支持 cqw 时把「1 设计单位」改为 wrap 宽度的 1/332
      （0.301205cqw），并把文字块的 px 尺寸/字号一并换成 cqw（基准宽 332）。
      不支持 cqw 的浏览器整段跳过，自动退回上方 px 值（= 旧行为，390 视口零变化）。 */
@@ -983,11 +991,6 @@
     box-shadow:0 8px 20px rgba(37,99,235,.28);cursor:pointer;letter-spacing:.5px;}
   .diag-cta-btn:active{transform:translateY(1px);}
 
-  /* 付费占位弹窗（独立于专业版 paywall 逻辑） */
-  .diag-pay-price{display:inline-block;margin:4px 0 12px;padding:8px 18px;border-radius:12px;
-    background:#eff6ff;border:1.5px solid #dbeafe;color:#1d4ed8;font-size:16px;font-weight:900;}
-  .diag-pay-msg{font-size:14.5px;color:#334155;line-height:1.8;}
-  .diag-pay-note{margin-top:12px;font-size:12.5px;color:#64748b;line-height:1.6;}
 
   /* 对角线模式：临时隐藏旧横向时间轴 + 明细表。
      用 class + !important 兜底，避免主流程内联 display:'' 复位把隐藏冲掉。
@@ -1912,7 +1915,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.31 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.32 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -2664,7 +2667,7 @@
             <g id="diagArrows"></g>
           </svg>
           <button type="button" class="diag-entry" id="diagEntry" aria-expanded="false">关于弹性退休?</button>
-          <div class="diag-entry-panel" id="diagEntryPanel"><span class="diag-ep-line">关于弹性退休，指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</span><span class="diag-ep-line">想要办理弹性退休，前提必须缴满政策规定对应的养老保险最低年限。</span><span class="diag-ep-line">弹性退休、法定退休，两者要求的最低缴费年限标准并不相同。</span><span class="diag-ep-line">企业在岗职工：办理弹性退休，需要与用人单位协商一致，单位同意才可申报。</span><span class="diag-ep-line">灵活就业参保人员：本人自愿申请即可。</span><span class="diag-ep-cta">💡查询您个人是否满足年限条件，解锁查看详情</span></div>
+          <div class="diag-entry-panel" id="diagEntryPanel"><span class="diag-ep-line">关于弹性退休，指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</span><span class="diag-ep-line">想要办理弹性退休，前提必须缴满政策规定对应的养老保险最低年限。</span><span class="diag-ep-line">弹性退休、法定退休，两者要求的最低缴费年限标准并不相同。</span><span class="diag-ep-line">企业在岗职工：办理弹性退休，需要与用人单位协商一致，单位同意才可申报。</span><span class="diag-ep-line">灵活就业参保人员：本人自愿申请即可。</span><div class="diag-ans" id="diagAns"><div class="diag-ans-title">您的专属答案</div><div class="diag-ans-row"><span class="diag-ans-k">弹性退休需缴满</span><span class="diag-ans-v" data-ans="flex">••••</span></div><div class="diag-ans-row"><span class="diag-ans-k">法定退休需缴满</span><span class="diag-ans-v" data-ans="legal">••••</span></div><div class="diag-ans-row"><span class="diag-ans-k">已缴</span><span class="diag-ans-v" data-ans="paid">••••</span></div><div class="diag-ans-row"><span class="diag-ans-k">还差</span><span class="diag-ans-v" data-ans="gap">••••</span></div></div><span class="diag-ep-cta" id="diagAnsUnlock">💡查询您个人是否满足年限条件，解锁查看详情</span></div>
           <div id="diagNodes"></div>
         </div>
         <div class="diag-count-row" id="diagCountRow" style="display:none;">
@@ -5123,26 +5126,22 @@
   /*   5. 本期不做真实支付：付费弹窗纯 UI 占位。                          */
   /* ==================================================================== */
 
-  /** 免费额度：单浏览器（localStorage 所在 profile）每自然日 3 次对角线 15 秒预览。 */
-  var DIAG_DAILY_QUOTA = 3;
-  var DIAG_PREVIEW_SECONDS = 15;
-  var DIAG_KEY_QUOTA = (LS_PREFIX + 'diag_quota');
+  /** 开发者调试开关的持久化键（?dev=1 开启 / ?dev=0 关闭）。 */
   var DIAG_KEY_DEV = (LS_PREFIX + 'diag_dev_mode');
 
-  /** 计时器句柄（模块级单例，避免多路径重复计时）。 */
-  var _diagTimer = null;
-  var _diagRemain = 0;
   /** 是否处于「对角线预览」流程：仅由 enterDiagonalPreview 置位，
-   *  由 renderDiagonal 消费。避免被动重算误扣额度。 */
+   *  由 renderDiagonal 消费。 */
   var _diagPreviewActive = false;
 
+  /** 「您的专属答案」真值缓存：仅存内存，绝不写入 DOM；重置时置 null。 */
+  var _diagAnsCache = null;
+
   /* ---- 开发者调试开关（网址后加 ?dev=1 开启 / ?dev=0 关闭）--------------
-     本机唯一的调试者：每日 3 次免费预览额度会被调试迅速耗尽，导致对角线
-     区块不再渲染，把开发者自己锁在门外。此开关仅供本机调试使用：
-       开启 → 不消耗免费额度、额度耗尽也照常渲染对角线、不启动 15 秒自动收起；
-       关闭 → 行为与普通用户逐字一致。
-     开关由 URL 查询参数控制并持久化到本机（键 pension_mobile_dev_mode），
-     之后即使不带参数也持续生效；?dev=0 关闭并清除标记。
+     本机调试用的轻量开关，由 URL 查询参数控制并持久化到本机
+     （键 pension_mobile_dev_mode），之后即使不带参数也持续生效；
+     ?dev=0 关闭并清除标记。
+     现唯一可观测作用：在 #diagQuotaNote 显示「开发者模式已开启」提示条
+     （renderDiagonal 内按 diagDevOn() 判定，非开发者模式不显示）。
      纯客户端本地行为，不引入任何外链或服务端交互（保持零外链）。 */
   var _diagDevMode = false;
 
@@ -5185,56 +5184,8 @@
   // 随页面加载立即生效（此后 enterDiagonalPreview / renderDiagonal 均按此判定）。
   diagInitDevMode();
 
-  /** 本地自然日字符串（本地时区 年-月-日）。 */
-  function diagToday() {
-    var d = new Date();
-    var m = d.getMonth() + 1;
-    var day = d.getDate();
-    return d.getFullYear() + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (day < 10 ? '0' + day : '' + day);
-  }
-
-  /** 读取额度状态；跨自然日自动重置。返回 {date, used, remaining}。
-   *  禁用存储时降级：返回 {date:今天, used:0, remaining:3}（当次会话内不拦截）。 */
-  function diagReadQuota() {
-    var today = diagToday();
-    var raw = null;
-    try { raw = localStorage.getItem(DIAG_KEY_QUOTA); } catch (e) { raw = null; }
-    var q = null;
-    if (raw) { try { q = JSON.parse(raw); } catch (e2) { q = null; } }
-    if (!q || typeof q !== 'object' || q.date !== today || typeof q.used !== 'number') {
-      // 未初始化 / 非法 / 跨日 → 重置
-      q = { date: today, used: 0 };
-    }
-    q.used = Math.max(0, Math.min(DIAG_DAILY_QUOTA, q.used));
-    try { localStorage.setItem(DIAG_KEY_QUOTA, JSON.stringify(q)); }
-    catch (e3) { /* 存储禁用：当次会话不拦截 */ }
-    var remaining = Math.max(0, DIAG_DAILY_QUOTA - q.used);
-    return { date: q.date, used: q.used, remaining: remaining };
-  }
-
-  /** 消耗一次额度；返回消耗后的 {date, used, remaining}。 */
-  function diagConsumeQuota() {
-    var q = diagReadQuota();
-    if (q.remaining > 0) {
-      q.used += 1;
-      q.remaining -= 1;
-      try { localStorage.setItem(DIAG_KEY_QUOTA, JSON.stringify({ date: q.date, used: q.used })); }
-      catch (e) { /* 存储禁用：当次会话不拦截 */ }
-    }
-    return q;
-  }
-
-  /** 停止当前倒计时（若在跑）。 */
-  function diagStopCountdown() {
-    if (_diagTimer !== null) {
-      try { clearInterval(_diagTimer); } catch (e) {}
-      _diagTimer = null;
-    }
-    _diagRemain = 0;
-  }
-
   /** 隐藏对角线视图（清空节点），仅保留查看详情按钮所在区块。
-   *  需求 3-B：15 秒走完 → 对角线停止渲染、视图清空消失。 */
+   *  现用于节点数为 0（无有效节点）时清空视图。 */
   function diagClearView() {
     var wrap = $('diagWrap');
     if (wrap) { wrap.style.display = 'none'; }
@@ -5246,73 +5197,70 @@
     diagApplyHideLegacy();
   }
 
-  /** 显示 / 刷新额度提示条（浅蓝系）。 */
-  function diagShowQuotaNote(remaining) {
-    var el = $('diagQuotaNote');
-    if (!el) return;
-    el.style.display = 'block';
-    el.textContent = '今日剩余免费预览额度：' + remaining + ' / ' + DIAG_DAILY_QUOTA + ' 次（每日零点重置）';
-  }
-
   /** 开发者模式提示条（复用 .diag-quota-note 的浅蓝样式，禁红）。
-   *  仅在开发者模式下替代额度提示，告知当前处于调试态。 */
+   *  仅在开发者模式下显示，告知当前处于调试态。 */
   function diagShowDevNote() {
     var el = $('diagQuotaNote');
     if (!el) return;
     el.style.display = 'block';
-    el.textContent = '开发者模式已开启：不消耗免费额度、对角线不自动收起（在网址后加 ?dev=0 可关闭）';
-  }
-
-  /** 渲染 15 秒可视化倒计时。到 0 → 清空视图、仅留按钮。 */
-  function diagStartCountdown() {
-    diagStopCountdown();
-    var numEl = $('diagCountNum');
-    var row = $('diagCountRow');
-    if (row) row.style.display = 'flex';
-    _diagRemain = DIAG_PREVIEW_SECONDS;
-    if (numEl) { numEl.textContent = String(_diagRemain); numEl.className = 'diag-count-num'; }
-    _diagTimer = setInterval(function () {
-      _diagRemain -= 1;
-      if (_diagRemain <= 0) {
-        diagStopCountdown();
-        if (numEl) numEl.textContent = '0';
-        diagClearView();
-        return;
-      }
-      if (numEl) {
-        numEl.textContent = String(_diagRemain);
-        // 仅做一次缩放脉冲，不做任何渐显 / 遮罩 / 模糊
-        numEl.className = 'diag-count-num tick';
-        setTimeout(function () { if (numEl && numEl.className === 'diag-count-num tick') numEl.className = 'diag-count-num'; }, 150);
-      }
-    }, 1000);
+    el.textContent = '开发者模式已开启（在网址后加 ?dev=0 可关闭）';
   }
 
   /** 付费占位弹窗（独立于专业版 paywall，纯 UI）。需求 3-A / 3-B 统一入口。 */
   function diagOpenPayPlaceholder() {
     var html =
       '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:8px;">🔓 查看完整测算详情</div>'
-      + '<div class="diag-pay-price">定价 2 元</div>'
-      + '<div class="diag-pay-msg">付费解锁功能将在微信小程序版本上线开放。暂未开通支付。</div>'
-      + '<div class="diag-pay-note">当前为预览版，完整退休规划详情（多方案对比、金额拆解、反推测算）将在小程序版开放。</div>'
       + '<div style="display:flex;justify-content:flex-end;margin-top:14px;">'
       + '<button type="button" onclick="wbCloseModal()" style="padding:9px 20px;font-size:14px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">我知道了</button>'
       + '</div>';
     wbOpenModal(html);
   }
 
-  /** 绑定「查看详情」按钮（幂等，只绑一次）。 */
+  /** 重置「您的专属答案」卡：四值回遮蔽符、移除 .done、清空内存真值。
+   *  每次新提交（enterDiagonalPreview）调用一次 ⇒ 一次新提交＝一次付费意愿机会。 */
+  function diagResetAnswer() {
+    _diagAnsCache = null;
+    var box = $('diagAns');
+    if (!box) return;
+    var spans = box.querySelectorAll('[data-ans]');
+    for (var i = 0; i < spans.length; i += 1) {
+      spans[i].textContent = '••••';
+      spans[i].className = 'diag-ans-v';
+    }
+    box.removeAttribute('data-unlocked');
+  }
+
+  /** 就地展开「您的专属答案」：仅在缓存有值且尚未解锁时执行。
+   *  已解锁 / 无缓存（未提交就点面板）→ 静默无动作，绝不抛错、不弹窗。 */
+  function diagRevealAnswer() {
+    var box = $('diagAns');
+    if (!box) return;
+    if (box.getAttribute('data-unlocked') === '1') return;
+    if (!_diagAnsCache) return;
+    var spans = box.querySelectorAll('[data-ans]');
+    for (var i = 0; i < spans.length; i += 1) {
+      var k = spans[i].getAttribute('data-ans');
+      var v = _diagAnsCache[k];
+      if (v !== undefined && v !== null) {
+        spans[i].textContent = String(v);
+        spans[i].className = 'diag-ans-v done';
+      }
+    }
+    box.setAttribute('data-unlocked', '1');
+  }
+
+  /** 绑定「查看详情」按钮 + 答案卡解锁点击（幂等，只绑一次）。 */
   var _diagCtaBound = false;
   function diagBindCta() {
     if (_diagCtaBound) return;
     var btn = $('diagDetailBtn');
-    if (!btn) return;
-    btn.onclick = function () {
-      // 提前点击 → 立即终止倒计时 → 弹付费占位弹窗
-      diagStopCountdown();
-      diagClearView();
-      diagOpenPayPlaceholder();
-    };
+    if (btn) {
+      btn.onclick = function () { diagOpenPayPlaceholder(); };
+    }
+    var unlock = $('diagAnsUnlock');
+    if (unlock) {
+      unlock.onclick = function () { diagRevealAnswer(); };
+    }
     _diagCtaBound = true;
   }
 
@@ -5346,34 +5294,26 @@
     var section = $('diagSection');
     if (!section) return;
 
-    // 仅当进入「对角线预览」流程时才消费额度并渲染，
-    // 避免实时输入 / setGender 等被动重算路径误扣额度（需求 4：提交参数才消耗）。
+    // 仅当进入「对角线预览」流程（用户提交参数）时才渲染，
+    // 避免实时输入 / setGender 等被动重算路径反复触发重渲染。
     if (!_diagPreviewActive) {
       return;
     }
     _diagPreviewActive = false;
 
-    // ★ 开发者模式：跳过额度门禁与扣减，额度耗尽也照常渲染（仅本机调试态）。
-    var devOn = diagDevOn();
-
-    // ★ 门禁：先读额度；未耗尽 → 消耗一次并预览；耗尽 → 不渲染对角线。
-    var quota = diagReadQuota();
-    if (!devOn && quota.remaining <= 0) {
-      // 需求 4：用完 → 无论任何参数，都不渲染对角线，直接展示【查看详情】按钮
-      section.style.display = 'block';
-      diagStopCountdown();
-      diagClearView();
-      diagShowQuotaNote(0);
-      return;
-    }
-    if (devOn) {
-      // 开发者模式：不扣额度，仅以浅蓝提示条告知当前处于调试态
-      section.style.display = 'block';
-      diagShowDevNote();
-    } else {
-      quota = diagConsumeQuota();
-      section.style.display = 'block';
-      diagShowQuotaNote(quota.remaining);
+    // 弧线常驻：不再有额度门禁与自动收起，直接展示对角线段落。
+    section.style.display = 'block';
+    // 开发者模式：现唯一可观测作用 —— 显示开发者提示条（非开发态不显示）。
+    if (diagDevOn()) { diagShowDevNote(); }
+    // 「您的专属答案」真值：仅存内存（_diagAnsCache），绝不写入 DOM。
+    // 字段逐字取自 compute 产物 c：minMonthsEarly / minMonths / totalPaid / gapMonthsEarly。
+    if (c) {
+      _diagAnsCache = {
+        flex:  fmtYearsMonths(c.minMonthsEarly),
+        legal: fmtYearsMonths(c.minMonths),
+        paid:  fmtYearsMonths(c.totalPaid),
+        gap:   fmtYearsMonths(c.gapMonthsEarly)
+      };
     }
 
     var list = (nodes || []).slice();
@@ -5505,9 +5445,6 @@
 
     // 需求 2：展示对角线时，临时隐藏旧横向时间轴 + 明细表（DOM / 代码保留，可一键切回）
     diagApplyHideLegacy();
-
-    // 需求 3：渲染完成后启动 15 秒可视化倒计时（开发者模式不启动，便于从容调试）
-    if (!devOn) { diagStartCountdown(); }
   }
   window.renderDiagonal = renderDiagonal;
 
@@ -5554,25 +5491,16 @@
   }
 
   /** 统一门面：两条提交路径（runQuery / submitForm）都经此进入对角线预览逻辑。
-   *  只负责门禁判断与视图切换，不复制任何节点构造 / 计算方法。
-   *  @return {boolean} 是否仍持有可预览额度（true=已渲染或可渲染）。 */
+   *  弧线敞开、无限使用：仅置位预览标记并显示视图，等 renderTimeline 桥接渲染。
+   *  同时重置「您的专属答案」卡（每次新提交＝一次新的付费意愿机会）。
+   *  只负责视图切换，不复制任何节点构造 / 计算方法。
+   *  @return {boolean} 恒为 true（保持原调用方契约）。 */
   function enterDiagonalPreview() {
-    var devOn = diagDevOn();
-    var q = diagReadQuota();
     var section = $('diagSection');
     if (!section) return false;
-    if (!devOn && q.remaining <= 0) {
-      // 额度耗尽：清空对角线，仅保留【查看详情】按钮（按钮已在 #diagSection 内）
-      _diagPreviewActive = false;
-      section.style.display = 'block';
-      diagStopCountdown();
-      diagClearView();
-      diagShowQuotaNote(0);
-      try { toast('今日对角线预览额度已用完，可点击「查看详情」了解完整功能'); } catch (e) {}
-      return false;
-    }
-    // 有额度：置位预览标记，等待 renderTimeline 的桥接调用 renderDiagonal 消费并渲染
-    diagStopCountdown();
+    // 重置答案卡：恢复遮蔽态、移除解锁标记、清空内存真值。
+    diagResetAnswer();
+    // 置位预览标记，等待 renderTimeline 的桥接调用 renderDiagonal 消费并渲染
     _diagPreviewActive = true;
     var wrapEl = $('diagWrap');
     if (wrapEl) wrapEl.style.display = 'block';
@@ -7750,7 +7678,7 @@
     state.liteMode = true;
     // 退出「查询（简版）」模式，恢复全版所有区块
     var pr0 = $('page-result'); if (pr0) pr0.classList.remove('query-mode');
-    // ★ 职工板块一期：提交即视为一次对角线预览请求（额度耗尽则不渲染对角线）
+    // ★ 职工板块一期：提交即视为一次对角线预览请求（弧线敞开，恒渲染）
     try { enterDiagonalPreview(); } catch (eDiagS) { console.error('submitForm diagonal:', eDiagS); }
     recompute();
     // 展示层：测算成功后留档一条历史记录（recompute 内 snapshotEntResult 已写好 __lastEntResult）。
@@ -7806,7 +7734,7 @@
       renderTable(c);
 
       // ★ 职工板块一期：优先渲染对角线时间主线（复用 renderTimeline 的节点数据）
-      //   先过统一门面判定额度，再调用 renderTimeline 产出 nodes 并由桥接触发 renderDiagonal。
+      //   先过统一门面置位预览标记，再调用 renderTimeline 产出 nodes 并由桥接触发 renderDiagonal。
       try {
         enterDiagonalPreview();
         renderTimeline(c);
@@ -10590,7 +10518,7 @@
       }
       if (errBox) { errBox.style.display = 'none'; errBox.innerHTML = ''; }
       if (typeof state !== 'undefined' && state) state.computedOnce = true;
-      // ★ 职工板块一期：简易查询同样优先渲染对角线（统一门面判定额度）
+      // ★ 职工板块一期：简易查询同样优先渲染对角线（统一门面置位预览标记）
       try { enterDiagonalPreview(); } catch (eDiagSS) { console.error('runSimpleQuery diagonal:', eDiagSS); }
       recompute();
       showPage('page-result');
