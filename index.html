@@ -323,12 +323,17 @@
   .optional-card{border-style:dashed;border-color:#c4d0e0;background:#fafcff;}
   .optional-card > h2{color:#5b6b82;}
 
-  .basic-lock-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.82);z-index:10;
-    display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;border-radius:10px;
-    backdrop-filter:blur(2px);text-align:center;padding:20px;}
+  /* 【v1.0.37 续·软锁】原为全覆盖半透明遮罩（rgba(255,255,255,.82) + blur），
+   会把下方的身份证框 / 出生年月 / 性别一起糊住，用户看不清自己的数据、没有信任感。
+   现改为「不遮挡的浅色提示条」：只占 .boards 网格第一行（跨两列），
+   防误操作交给字段自身的 disabled 置灰（值始终清晰可读）。 */
+.basic-lock-overlay{position:static;grid-column:1 / -1;background:#eff6ff;border:1px solid #dbeafe;z-index:1;
+    display:none;align-items:flex-start;justify-content:flex-start;flex-direction:column;gap:8px;border-radius:10px;
+    text-align:left;padding:12px 14px;}
   .basic-lock-overlay.active{display:flex;}
   .basic-lock-overlay .lock-text{font-size:16px;font-weight:800;color:#1f2937;display:flex;align-items:center;gap:8px;}
-  .basic-lock-overlay .lock-tip{font-size:13px;color:#64748b;}
+  .basic-lock-overlay .lock-tip{font-size:14px;color:#475569;line-height:1.6;}
+.basic-lock-overlay #btnUnlockBasic{font-size:14px;font-weight:700;padding:8px 16px;align-self:flex-start;}
 
   /* ===== Gap ③ 专业版付费门禁（IRR / NPV / 机会成本） ===== */
   .pay-lock{font-size:12px;color:#b45309;font-weight:700;margin-left:4px;cursor:pointer;}
@@ -990,6 +995,18 @@
     background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border:none;border-radius:12px;
     box-shadow:0 8px 20px rgba(37,99,235,.28);cursor:pointer;letter-spacing:.5px;}
   .diag-cta-btn:active{transform:translateY(1px);}
+
+  /* 【v1.0.37 续×4】纯计算模式：深度测算不再重复渲染弧线。
+     收起弧线画布（SVG 曲线 + 四个节点），只留「关于弹性退休 / 您的专属答案 / 查看详情」付费入口。
+     只动展示层：不改任何计算函数、不动 HTML 锁定区、不改 .diag-* 既有规则。 */
+  #diagSection.calc-only .diag-wrap{aspect-ratio:auto;overflow:visible;background:none;
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;
+    margin:0;padding:2px 0 0;min-height:0;}
+  #diagSection.calc-only .diag-svg,
+  #diagSection.calc-only #diagNodes{display:none;}
+  #diagSection.calc-only .diag-entry{position:static;right:auto;top:auto;}
+  #diagSection.calc-only .diag-entry-panel{position:static;right:auto;top:auto;
+    flex-basis:100%;max-width:100%;margin:0;}
 
 
   /* 对角线模式：临时隐藏旧横向时间轴 + 明细表。
@@ -1916,7 +1933,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.36 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.37 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -3068,7 +3085,10 @@
     // 程序性全选会让手机输入法（微信 X5 内核）立刻弹出"文字选中工具条"
     // （复制/扩选/搜索/正文提取），正好浮在下拉列表上把列表遮挡。
     // 这两个框不被全选，即从源头掐断该工具条的触发；其余输入框仍保持全选。
-    if (t.id === 'avgSalaryProv' || t.id === 'avgSalaryCity') return;
+    // 【v1.0.37 续·双键盘根治】身份证三框同样排除：移动端它们由内置数字键盘独占（readonly 常驻），
+    // 程序性全选在部分手机内核（微信 X5）会弹出"文字选中工具条"，正好浮在内置键盘上方造成遮挡。
+    if (t.id === 'avgSalaryProv' || t.id === 'avgSalaryCity'
+      || t.id === 'idCard' || t.id === 'govIdCard' || t.id === 'splitIdCard') return;
     t.select();
   }, true);
 
@@ -5200,7 +5220,16 @@
     }
     $('timeline').innerHTML = html;
     var tlWrap = $('retireTimelineWrap');
-    if (tlWrap) tlWrap.style.display = 'block';
+    if (tlWrap) {
+      tlWrap.style.display = 'block';
+      /* 【v1.0.37 续×4】纯计算模式（弧线收起）下，旧横向时间轴与明细表继续保持隐藏。
+         原本由 renderDiagonal 内的 diagApplyHideLegacy() 负责；该模式下弧线不渲染，
+         故在此补上，避免「确认并计算」后横向时间轴冒出来。 */
+      try {
+        var _ds = $('diagSection');
+        if (_ds && _ds.classList.contains('calc-only')) diagApplyHideLegacy();
+      } catch (eHide) { console.error('calc-only hideLegacy:', eHide); }
+    }
 
     /* ★ 职工板块一期：把 nodes 构造结果「喂」给对角线视图复用。
        本函数仍是节点数据的唯一生产者（single source of truth），
@@ -5855,12 +5884,46 @@
     if (!section) return false;
     // 重置答案卡：恢复遮蔽态、移除解锁标记、清空内存真值。
     diagResetAnswer();
+    // 【v1.0.37 续×4】清掉「纯计算模式」标记，保证卡片A简版查询时弧线照常渲染。
+    section.classList.remove('calc-only');
     // 置位预览标记，等待 renderTimeline 的桥接调用 renderDiagonal 消费并渲染
     _diagPreviewActive = true;
     var wrapEl = $('diagWrap');
     if (wrapEl) wrapEl.style.display = 'block';
     var cr = $('diagCountRow');
     if (cr) cr.style.display = 'none';
+    return true;
+  }
+
+  /** 【v1.0.37 续×4】纯计算模式：深度测算（submitForm）不再重复渲染弧线。
+   *  背景：弧线是首屏钩子——卡片A「查询我的退休时间」已在简版结果页渲染过一次；
+   *  用户继续填参保数据后点「确认并计算」，应当直接把算好的结果给他，不要再放一遍弧线。
+   *  做法：给 #diagSection 挂 .calc-only（CSS 收起弧线画布与节点）；
+   *       不置位 _diagPreviewActive ⇒ renderDiagonal 开场即 return，弧线 SVG 不会重画；
+   *       但保留「关于弹性退休 / 您的专属答案 / 查看详情」付费入口，并补齐其事件绑定。
+   *  完全不触碰任何计算逻辑（compute / estimateAt / accrueAccount 等一律不动）。 */
+  function enterCalcPreview() {
+    var section = $('diagSection');
+    if (!section) return false;
+    diagResetAnswer();
+    _diagPreviewActive = false;              // 关键：不让 renderDiagonal 渲染弧线
+    section.classList.add('calc-only');
+    section.style.display = 'block';
+    var nb = $('diagNodes');
+    if (nb) nb.innerHTML = '';               // 清掉上一轮弧线节点残留
+    /* 【v1.0.37 续×4 修】清掉历史内联 display（diagClearView 可能置 none、
+       enterDiagonalPreview 置 block）；内联样式优先级最高，若保留会压掉
+       #diagSection.calc-only .diag-wrap 的 display:flex，使「关于弹性退休?」
+       无法居中。此处交还样式表按 .calc-only 规则渲染（flex + justify-content:center）。 */
+    var wrapEl = $('diagWrap');
+    if (wrapEl) wrapEl.style.removeProperty('display');
+    var cr = $('diagCountRow');
+    if (cr) cr.style.display = 'none';
+    /* 弧线不渲染 ⇒ renderDiagonal 不会执行绑定，此处补齐（两函数内部均幂等）。 */
+    try { diagBindCta(); } catch (e1) { console.error('enterCalcPreview bindCta:', e1); }
+    try { diagBindEntry(); } catch (e2) { console.error('enterCalcPreview bindEntry:', e2); }
+    /* 旧横向时间轴 + 明细表继续隐藏：与弧线模式观感一致，页面其余版式不变。 */
+    diagApplyHideLegacy();
     return true;
   }
 
@@ -8051,8 +8114,9 @@
     state.liteMode = true;
     // 退出「查询（简版）」模式，恢复全版所有区块
     var pr0 = $('page-result'); if (pr0) pr0.classList.remove('query-mode');
-    // ★ 职工板块一期：提交即视为一次对角线预览请求（弧线敞开，恒渲染）
-    try { enterDiagonalPreview(); } catch (eDiagS) { console.error('submitForm diagonal:', eDiagS); }
+    /* 【v1.0.37 续×4】深度测算不再重复渲染弧线：走「纯计算模式」直接进计算逻辑。
+       弧线已在卡片A简版查询给过（首屏钩子），此处不重放；付费入口仍保留。 */
+    try { enterCalcPreview(); } catch (eDiagS) { console.error('submitForm calcPreview:', eDiagS); }
     recompute();
     // 展示层：测算成功后留档一条历史记录（recompute 内 snapshotEntResult 已写好 __lastEntResult）。
     // 挂在提交成功分支而非 snapshotEntResult 内：后者会被实时输入的 recompute 反复调用，
@@ -8827,6 +8891,9 @@
     if (!carried.cat) { $('category').value = 'ENT_W50'; }
     updateCategoryHint(); // 切换表单显示（.value 赋值不触发 change，必须显式调用）
     try { setQueryMode('deep'); } catch (eQ) { console.error('enterStaffDeep setQueryMode:', eQ); }
+    /* 【v1.0.37 续·携值锁定】A 卡已锁定的出生年月/性别/身份类别随行带入后保持锁定态，
+       用户只需往下补参保与缴费数据，不必重复输入已确认的信息。 */
+    applyCarryLock(carried);
     showPage('page-input');
     showInputPane('pane-basic');
     try { recompute(); } catch(e) { console.error('enterStaffDeep recompute:', e); }
@@ -8898,7 +8965,17 @@
     if (bm) { bm.disabled = locked; bm.style.background = locked ? '#f1f5f9' : ''; bm.style.color = locked ? '#94a3b8' : ''; bm.style.cursor = locked ? 'not-allowed' : ''; }
     for (var i = 0; i < rs.length; i += 1) rs[i].disabled = locked;
     if (gr) gr.style.opacity = locked ? '0.55' : '';
-    if (idEl) { idEl.readOnly = locked; idEl.style.background = locked ? '#f1f5f9' : ''; idEl.style.color = locked ? '#94a3b8' : ''; }
+    if (idEl) {
+      /* 【v1.0.37 续·双键盘根治】移动端 readonly 归内置数字键盘模块独占（常驻），本函数只管视觉锁定。
+         若在此摘掉 readonly，而身份证框此刻仍处于聚焦态（输入中途必然如此：每按一位都会因
+         「未满 18 位 / 解析失败」走本函数的解锁分支），手机系统键盘会立刻弹出，与内置键盘叠成
+         双键盘 —— 这正是反复复报的根因。桌面端行为与改前完全一致；模块未加载（含 jsdom
+         回归 harness）时回落旧行为。 */
+      var npOwnsId = (typeof window.__npOwns === 'function') ? window.__npOwns(idEl) : false;
+      if (!npOwnsId) idEl.readOnly = locked;
+      idEl.style.background = locked ? '#f1f5f9' : '';
+      idEl.style.color = locked ? '#94a3b8' : '';
+    }
   }
   /** 共享：解锁态按键显隐。mode = initial(未锁) | id(身份证锁) | manual(手动确认锁)。 */
   function splitSetButtons(mode) {
@@ -8961,7 +9038,10 @@
   if ($('splitIdCard')) $('splitIdCard').addEventListener('input', onSplitIdInput);
   if ($('splitIdClear')) $('splitIdClear').addEventListener('click', function () {
     var idEl = $('splitIdCard');
-    if (idEl) { idEl.value = ''; idEl.readOnly = false; }
+    /* 【v1.0.37 续·双键盘根治】只清值，不再手动 readOnly = false：
+       解锁态一律交给 splitSetFieldLock 统一处理（移动端不摘 readonly），
+       否则「先摘锁 + 再 focus()」是一个确定性弹系统键盘的组合。 */
+    if (idEl) idEl.value = '';
     unlockSplitFieldsFromId();
     if (idEl) idEl.focus();
   });
@@ -9011,6 +9091,57 @@
     } catch (e) { console.error('syncSplitToMainForm:', e); }
     return out;
   }
+
+  /** 【v1.0.37 续·携值锁定】把卡片 A 的「已锁定」语义一并搬到深度表单。
+   *  场景：A 卡已填 出生年月/性别 并确认锁定（防误操作），用户点「去测算」进卡片 B 时，
+   *  这三项（含身份类别）是「移过来的」——不该重填，也不该能误改；
+   *  用户只需往下填 首次/最后参保时间、累计已缴、视同缴费、断缴。
+   *  触发条件（两条件同时满足，避免误锁）：
+   *    ①卡片 A 处于锁定态（_splitLockMode 为 id / manual，即用户已「确认」或身份证解析成功）；
+   *    ②性别 + 出生年 + 出生月 三项值确实带来。
+   *  视觉与卡片 A 一致：复用现成 #basicLockOverlay 遮罩（只覆盖「身份证导入 + 手动输入」
+   *  两块板，绝不遮挡下方参保字段），并把带入值写进遮罩供核对（口径透明）。
+   *  ★ 全部经 JS 施加，锁定区 HTML 一字不动 —— 守住机关区零差异铁律。
+   *  返回 true 表示已进入携值锁定态。
+   */
+  function applyCarryLock(carried) {
+    try {
+      var aLocked = (_splitLockMode === 'id' || _splitLockMode === 'manual');
+      if (!aLocked) return false;
+      if (!carried || !carried.gender || !carried.y || !carried.m) return false;
+      /* ①出生年月 + 性别：复用既有「手动确认」锁（birthY/birthM disabled + 性别灰掉不可点） */
+      state.idLocked = false;
+      state.manualLocked = true;
+      setBirthLocked(true);
+      /* ②身份类别：同来自卡片 A，一并锁定，防止改出不同口径 */
+      var catEl = $('category');
+      if (catEl) catEl.disabled = true;
+      /* ③遮罩激活 + 写入带入值（用户一眼核对有没有带错） */
+      var ov = $('basicLockOverlay');
+      if (ov) {
+        var catTxt = '';
+        if (catEl && catEl.options && catEl.selectedIndex >= 0) {
+          catTxt = catEl.options[catEl.selectedIndex].textContent || '';
+        }
+        var lt = ov.querySelector('.lock-text');
+        var lp = ov.querySelector('.lock-tip');
+        if (lt) lt.textContent = '🔒 已从上方带入，无需重填';
+        if (lp) {
+          lp.textContent = '出生 ' + carried.y + '年' + carried.m + '月 · '
+            + (carried.gender === 'M' ? '男' : '女')
+            + (catTxt ? (' · ' + catTxt) : '')
+            + '　如需修改，请点「解锁修改」';
+        }
+        ov.classList.add('active');
+        state.basicLocked = true;
+      }
+      return true;
+    } catch (e) {
+      console.error('applyCarryLock:', e);
+      return false;
+    }
+  }
+  window.applyCarryLock = applyCarryLock;
 
   /** 【v1.0.34】卡片 A 提示条的默认态文案（与 HTML 里 #splitAHint 的初始内容一致）。
       用途：校验开始前先复位、提交成功后也复位，避免上一次的报错残留。 */
@@ -9074,8 +9205,11 @@
    *  机关事业单位整套计算逻辑完全不动——此处只搬运选择值，不触碰任何引擎。 */
   function goDeepFromSimple() {
     /* 【本轮】与卡片 B 共用同一套搬运逻辑（原内联逻辑抽为 syncSplitToMainForm，两处入口行为一致）。 */
-    try { syncSplitToMainForm(); updateCategoryHint(); } catch (e) { console.error('goDeepFromSimple sync:', e); }
+    var carried = null;
+    try { carried = syncSplitToMainForm(); updateCategoryHint(); } catch (e) { console.error('goDeepFromSimple sync:', e); }
     try { setQueryMode('deep'); } catch (e) { console.error('goDeepFromSimple setQueryMode:', e); }
+    /* 【v1.0.37 续·携值锁定】与卡片 B 同一套：带入的出生年月/性别/身份类别保持锁定态。 */
+    if (carried) applyCarryLock(carried);
     showPage('page-input');
     showInputPane('pane-basic');
   }
@@ -9782,6 +9916,8 @@
     state.basicLocked = false;
     var ov = $('basicLockOverlay');
     if (ov) ov.classList.remove('active');
+    /* 【v1.0.37 续·携值锁定】整表重置时一并放开身份类别，避免携值锁定残留 */
+    var _catR = $('category'); if (_catR) _catR.disabled = false;
     if (full) {
       // 缴费数据（page-result）：省份先走应用自身的「点击即清空」（同时复位省/市/参数提示/计发基数）
       try {
@@ -10643,6 +10779,17 @@
   $('btnUnlockBasic').addEventListener('click', function () {
     state.basicLocked = false;
     $('basicLockOverlay').classList.remove('active');
+    /* 【v1.0.37 续·携值锁定】点「解锁修改」= 连出生年月/性别/身份类别一起放开。
+       否则遮罩消失了、字段仍灰着，用户会以为坏了。视觉复位与 manualReset 一致。 */
+    state.manualLocked = false;
+    state.idLocked = false;
+    setBirthLocked(false);
+    var _catU = $('category'); if (_catU) _catU.disabled = false;
+    var _mbU = $('manualConfirmBtn'); if (_mbU) { _mbU.classList.add('show'); _mbU.classList.remove('hl'); }
+    var _mrU = $('manualResetBtn'); if (_mrU) _mrU.classList.remove('show');
+    var _mlU = $('manualLockNote'); if (_mlU) _mlU.classList.remove('show');
+    var _maU = $('manualArchiveNote'); if (_maU) _maU.classList.remove('show');
+    try { recompute(); } catch (e) { console.error('btnUnlockBasic recompute:', e); }
   });
   $('manualConfirmBtn').addEventListener('click', confirmManual);
   $('manualResetBtn').addEventListener('click', manualReset);
@@ -13744,7 +13891,7 @@
      ⑤ 【Phase 8】新增百分号「%」键（常显）与「一键清零」键（仅身份证框显示）；
         语音播报【仅限身份证框】触发——其他数字/汉字字段输入时不再播报，
         避免在非身份证场景产生多余语音。
-   点「确认」时移除 readonly 并 blur，从而触发原生 change，
+   点「确认」时 blur（移动端 readonly 常驻、不摘除），并补发原生 change，
    保证只监听 change 的既有逻辑同样被执行。
    ====================================================================== */
 (function () {
@@ -14046,12 +14193,22 @@
   }
 
   function lockNative(el) {
-    if (!el.hasAttribute('data-np-locked')) {
-      el.setAttribute('data-np-locked', '1');
-      el.setAttribute('readonly', 'readonly');   // 压掉系统键盘
-    }
+    /* 【复报补修·③】改为「幂等且强制」：始终确保 readonly 在位。
+       原因：#splitIdCard 的 readonly 曾被分流页逻辑摘除，而那些路径不会清理本模块的
+       data-np-locked 标记，于是出现「标记还在、readonly 已被摘」的错位 —— 旧实现此时会跳过、
+       不再补 readonly，导致再点该框时系统键盘又被唤起（分流页双键盘）。
+       【v1.0.37 续】分流页已改为移动端不再摘锁、unlockNative 移动端亦不摘锁，
+       本函数仍保持「幂等强制」，作为最后一道保险。 */
+    el.setAttribute('data-np-locked', '1');
+    if (!el.hasAttribute('readonly')) el.setAttribute('readonly', 'readonly');   // 压掉系统键盘
   }
   function unlockNative(el) {
+    /* 【v1.0.37 续·双键盘根治】移动端一律不摘 readonly：常驻 readonly 是本模块压住系统键盘
+       唯一可靠的手段 —— 只要该框还是 activeElement，一旦 readonly 被摘，系统键盘立刻弹出。
+       本模块原有 3 个摘锁点（确认键 / 焦点跳框 / 失焦 120ms）因此全部封口；
+       data-np-locked 标记同步保留（lockNative 幂等强制，标记常在与否均不影响）。
+       桌面端保持原语义：不接管原生输入法。 */
+    if (isMobile()) return;
     if (el && el.getAttribute('data-np-locked') === '1') {
       el.removeAttribute('readonly');
       el.removeAttribute('data-np-locked');
@@ -14117,6 +14274,16 @@
     }
   }
 
+  /* 派发原生 change（与 fireInput 同款降级写法）。
+     供「确认」键在 blur 未自动触发 change 时补发一次，保证只监听 change 的既有逻辑照常执行。 */
+  function fireChange(el) {
+    try {
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {
+      try { var ev = document.createEvent('Event'); ev.initEvent('change', true, true); el.dispatchEvent(ev); } catch (e2) {}
+    }
+  }
+
   function applyKey(k) {
     if (!active) return;
     if (k === 'done') {                       // 确认：语音反馈 + 【Phase 14】移动端复刻 PC 回车跳转
@@ -14127,9 +14294,18 @@
       if (isMobile() && el.type === 'number' && advanceToNextNumberField(el)) {
         return;   // 焦点已交给下一格：focusin 会重新唤起键盘，保持连续录入
       }
-      unlockNative(el);
+      /* 【修复·双键盘】旧序「先摘 readonly 再 blur」存在一瞬「仍聚焦 + 非 readonly」，
+         系统键盘可能被唤起。改为「先 blur（此刻仍 readonly → 不弹系统键盘）再释放」，
+         并用一次性探测保证原生 change 只触发一次，维持「确认即触发 change」的既有语义不变。
+         【v1.0.37 续】移动端 unlockNative 已改为不摘 readonly（常驻），此处的"释放"仅桌面端生效。 */
+      var npGotNativeChange = false;
+      var npOnNatChange = function () { npGotNativeChange = true; };
+      try { el.addEventListener('change', npOnNatChange); } catch (e) {}
       closePad();
       try { el.blur(); } catch (e) {}
+      try { el.removeEventListener('change', npOnNatChange); } catch (e) {}
+      unlockNative(el);
+      setTimeout(function () { if (!npGotNativeChange) fireChange(el); }, 0);
       return;
     }
     if (k === 'clear') {                      // 【Phase 8】一键清零：清空当前输入框
@@ -14214,16 +14390,50 @@
   });
   /* 【本轮修复·双键盘】focusin 在 focus 之后才 lockNative，系统键盘已弹出（竞态）。
      改为在 touchstart / pointerdown 捕获阶段（focus 之前）先锁，从源头压住系统键盘。
+     【复报补修·①】此前只认 e.target 为 INPUT：点身份证框上方的 <label for="idCard"> 文字时
+       目标元素是 LABEL，直接 return，标签默认行为把焦点交给输入框（尚未 readonly）→
+       系统键盘弹出，随后 focusin 才补 readonly 已晚 → 双键盘。故先把目标解析为其关联输入框。
      isMobile / numericTarget / lockNative 均为本模块已定义符号。 */
+  function npResolveTarget(t) {
+    if (!t || t.nodeType !== 1) return null;
+    if (t.tagName === 'INPUT') return t;
+    if (t.tagName === 'LABEL') {                      // 点标签文字：取出它关联的输入框
+      var ctl = t.control || null;
+      if (!ctl && t.htmlFor) { try { ctl = document.getElementById(t.htmlFor); } catch (eL) { ctl = null; } }
+      if (!ctl && typeof t.querySelector === 'function') ctl = t.querySelector('input');
+      if (ctl && ctl.tagName === 'INPUT') return ctl;
+    }
+    return null;
+  }
   function npPreLock(e) {
     if (!isMobile()) return;
-    var t = e.target;
-    if (!t || t.tagName !== 'INPUT') return;
+    var t = npResolveTarget(e.target);
+    if (!t) return;
     if (!numericTarget(t)) return;
     lockNative(t);
   }
   document.addEventListener('touchstart', npPreLock, true);
   if (window.PointerEvent) document.addEventListener('pointerdown', npPreLock, true);
+
+  /* 【复报补修·②】把本模块独占托管的文本类身份证框在初始化即置为常驻 readonly，
+     使「点标签文字」等任何聚焦路径都不会唤起系统键盘（移动端只走自定义键盘）。
+     【v1.0.37 续·双键盘根治】改为三个身份证框全预置（含 #splitIdCard）：
+     分流页侧已同步改为「移动端不摘 readonly」（splitSetFieldLock / splitIdClear），
+     原先"互相打架"的前提已消失；预置后连「程序性 focus（无 pointerdown 前置）」这条路径也一并封住。
+     桌面端不预置，保持原生输入法。 */
+  if (isMobile()) {
+    var npInitIds = ['idCard', 'govIdCard', 'splitIdCard'];
+    for (var npI = 0; npI < npInitIds.length; npI++) {
+      var npEl = document.getElementById(npInitIds[npI]);
+      if (npEl && numericTarget(npEl)) lockNative(npEl);
+    }
+  }
+
+  /* 【v1.0.37 续·双键盘根治】把「本模块是否接管该框」暴露给主脚本（分流页 splitSetFieldLock）：
+     移动端 + 数字类目标 = readonly 由本模块独占常驻。主脚本据此不再自行摘 readonly。
+     桌面端返回 false → 主脚本行为与改前完全一致；jsdom harness 下本模块可能未初始化，
+     调用处以 typeof 兜底 → 同样回落旧行为，回归判据不受影响。 */
+  window.__npOwns = function (el) { return !!(isMobile() && numericTarget(el)); };
 
 /* 注意：本模块刻意不采用标准 IIFE 收尾的那个「五字符序列」
    （依次为：右花括号、右圆括号、左圆括号、右圆括号、半角分号），
