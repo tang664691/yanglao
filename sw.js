@@ -23,7 +23,7 @@
       activate 又只删「同前缀、不同版本号」的旧缓存 ⇒ 升版**连带清掉整个旧缓存包**，
       老设备因此不再持有旧副本，才会取到新字节（cache-first 的 jpg/mp3 尤其如此）。
       判断永远以「该资源名是否出现在 PRECACHE」为准。 */
-var SW_VERSION = 'v1.0.37';
+var SW_VERSION = 'v1.0.38';
 
 var CACHE_PREFIX = 'axyl-';
 var CACHE_NAME = CACHE_PREFIX + SW_VERSION;
