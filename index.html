@@ -1881,6 +1881,7 @@
     </div>
     <div class="pick-card inst" id="entryInst" tabindex="0" role="button">
       <div class="pick-badge">老</div>
+      <span style="position:absolute;top:10px;right:10px;background:#f1f5f9;color:#64748b;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;border:1px solid #e2e8f0;">维护中</span>
       <div class="pick-name" id="entryInstName">机关事业单位（老人/中人/新人）</div>
       <div class="pick-desc" id="entryInstDesc">2014 年养老并轨前已退休（老人）按老办法；改革前参保、改革后退休（中人）含过渡性养老金＋职业年金；改革后参保（新人）按新办法。</div>
       <button type="button" class="pick-btn">立即测算 →</button>
@@ -1915,7 +1916,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.35 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.36 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -5330,27 +5331,73 @@
       + '</tr>';
   }
 
-  /** 导出付费弹窗：免费预览结束后的统一出口。
-   *  支付逻辑暂不开发：¥3 按钮点击仅 toast 占位（上线时替换成真实下单）。 */
-  function diagOpenExportPaywall() {
+  /* ====================================================================
+   * 【v1.0.x 付费门禁骨架】双档解锁框
+   *   序列 A：点「查看详情」→ 弹双档框（¥1 解锁详情 / ¥3 导出 PDF / 暂不需要）
+   *   → 点「暂不需要」才进免费 60s 预览（答案遮蔽）。
+   *   ¥1 档 = 3 次预览 · 1 个月有效（同/不同人可共用，localStorage 占位，
+   *        易清缓存绕过，真防刷留小程序接后端）。
+   *   真实支付 + 解锁逻辑等上小程序再接；按钮本轮 toast 占位。机关板块零改动。
+   * ==================================================================== */
+
+  /** ¥1 权益读取：返回 {chances, expiry} 或 null（无 / 失效 / 次数为 0）。 */
+  function diagGetEntitlement() {
+    try {
+      var raw = localStorage.getItem('pension_proto_detail_v1');
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || typeof o.chances !== 'number' || typeof o.expiry !== 'number') return null;
+      if (o.expiry <= Date.now()) return null;
+      if (o.chances <= 0) return null;
+      return o;
+    } catch (e) { return null; }
+  }
+
+  /** 是否拥有有效 ¥1 权益（用于四行卡与付费预览门禁）。 */
+  function diagHasEntitlement() { return !!diagGetEntitlement(); }
+
+  /** 消耗一次 ¥1 预览机会（真实支付成功后由支付回调调用；本轮骨架仅占位）。 */
+  function diagConsumeChance() {
+    var o = diagGetEntitlement();
+    if (!o) return false;
+    o.chances = Math.max(0, o.chances - 1);
+    try { localStorage.setItem('pension_proto_detail_v1', JSON.stringify(o)); } catch (e) {}
+    return true;
+  }
+
+  /** 双档付费框：¥1 解锁详情 / ¥3 导出 PDF / 暂不需要。
+   *  ¥1·¥3 按钮本轮 toast 占位（真实支付等小程序）；暂不需要 → 免费 60s 预览。 */
+  function diagOpenPaywall() {
+    var ent = diagGetEntitlement();
+    var entNote = ent
+      ? ('已解锁：剩余 ' + ent.chances + ' 次预览 · 有效期至 ' + new Date(ent.expiry).toLocaleDateString())
+      : '未解锁：完整报告与您的专属答案需解锁后查看';
     var html =
-      '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:8px;">🔓 导出完整 PDF 报告</div>'
-      + '<div style="font-size:14px;color:#334155;line-height:1.9;">免费预览已结束。</div>'
-      + '<div style="font-size:14px;color:#334155;line-height:1.9;">导出 PDF 版《退休时间测算报告》：<b style="font-size:17px;color:#1d4ed8;">¥3</b></div>'
-      + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">'
-      + '<button type="button" id="diagPayNoBtn" style="padding:9px 20px;font-size:14px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">暂不需要</button>'
-      + '<button type="button" id="diagPayYesBtn" style="padding:9px 20px;font-size:14px;font-weight:800;color:#fff;background:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:9px;cursor:pointer;">导出 PDF（¥3）</button>'
+      '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:6px;">🔓 查看详情 · 解锁查询</div>'
+      + '<div style="font-size:13.5px;color:#334155;line-height:1.8;margin-bottom:10px;">' + entNote + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;">'
+      + '<button type="button" id="diagPay1Btn" style="padding:12px 16px;font-size:15px;font-weight:800;color:#fff;background:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:10px;cursor:pointer;text-align:left;">'
+      + '¥1 解锁详情查询<span style="display:block;font-size:12px;font-weight:600;opacity:.92;margin-top:2px;">3 次预览 · 1 个月有效 · 含专属答案与完整报告</span></button>'
+      + '<button type="button" id="diagPay3Btn" style="padding:12px 16px;font-size:15px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:10px;cursor:pointer;text-align:left;">'
+      + '¥3 导出完整 PDF<span style="display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:2px;">一次性导出《退休时间测算报告》</span></button>'
+      + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:14px;">'
+      + '<button type="button" id="diagPayNoBtn" style="padding:9px 20px;font-size:14px;font-weight:800;color:#475569;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:9px;cursor:pointer;">暂不需要（免费预览 60 秒）</button>'
       + '</div>';
     wbOpenModal(html);
     var box = $('wbModalBox');
+    var p1 = box ? box.querySelector('#diagPay1Btn') : null;
+    var p3 = box ? box.querySelector('#diagPay3Btn') : null;
     var no = box ? box.querySelector('#diagPayNoBtn') : null;
-    var yes = box ? box.querySelector('#diagPayYesBtn') : null;
-    if (no) no.onclick = function () { wbCloseModal(); };
-    if (yes) yes.onclick = function () { wbCloseModal(); toast('支付通道即将开放，敬请期待'); };
+    if (p1) p1.onclick = function () { wbCloseModal(); toast('支付通道即将开放，敬请期待'); /* TODO: 真实支付成功后调 diagConsumeChance() + diagOpenReportPreview({paid:true}) */ };
+    if (p3) p3.onclick = function () { wbCloseModal(); toast('支付通道即将开放，敬请期待'); /* TODO: 真实支付成功后调 diagOpenReportPreview({paid:true}) + PDF 导出 */ };
+    if (no) no.onclick = function () { wbCloseModal(); diagOpenReportPreview(); };
   }
 
-  /** 报告正文 HTML（全部取自 _diagReportSnap 快照，不读实时 DOM）。 */
-  function diagBuildReportHtml() {
+  /** 报告正文 HTML（全部取自 _diagReportSnap 快照，不读实时 DOM）。
+   *  入参 opt.showAnswers 自「报告只作免费预览、答案统一回到上一页查询」定案后
+   *  已不再影响正文字段（保留入参只为调用方签名兼容），故正文对免费态与付费态一致。 */
+  function diagBuildReportHtml(opt) {
     var s = _diagReportSnap;
     if (!s) return '';
     var a = s.answers || {};
@@ -5391,27 +5438,25 @@
         + '</tr>';
     }
     h += '</table>';
-    /* 三、缴费年限要求（您的专属答案） */
-    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">三、缴费年限要求（您的专属答案）</div>';
+    /* 三、您的缴费情况 — 只呈现用户自报的「已缴」。
+       弹性退休 / 法定退休的最低缴费年限要求，以及「还差」年限，属付费查询内容：
+       报告不分免费预览与付费态，一律不外泄（故此处不再读 a.flex / a.legal / a.gap），
+       统一由末行与第五节引导回上一页底部「关于弹性退休」入口查询详情。 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">三、您的缴费情况</div>';
     h += '<table style="width:100%;border-collapse:collapse;font-size:13.5px;">'
-      + diagReportKvRow('弹性退休需缴满', a.flex)
-      + diagReportKvRow('法定退休需缴满', a.legal)
       + diagReportKvRow('已缴', a.paid)
-      + diagReportKvRow('还差（按弹性退休）', a.gap)
+      + diagReportKvRow('缴费年限要求', '返回上一页「关于弹性退休」查询')
       + '</table>';
     /* 四、退休时间弧线图 */
     h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">四、退休时间弧线图</div>';
     h += '<div style="padding:10px 12px;border:1.5px solid #bfdbfe;border-radius:10px;background:#f0f9ff;font-size:13px;color:#1e3a8a;line-height:1.7;">弧线可视化已在测算结果页常驻展示，本报告不重复绘制；四个节点的时间与年龄见上文「二、退休节点一览」。</div>';
-    /* 五、弹性退休政策说明 */
-    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">五、弹性退休政策说明</div>';
-    h += '<div style="font-size:13px;color:#334155;line-height:1.9;">'
-      + '<div><b>什么是弹性退休：</b>指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</div>'
-      + '<div><b>办理前提：</b>必须缴满政策规定对应的养老保险最低缴费年限。</div>'
-      + '<div><b>年限差异：</b>弹性退休与法定退休两者要求的最低缴费年限标准并不相同。</div>'
-      + '<div style="margin-top:6px;"><b>弹性退休（依据：人社部发〔2024〕94号《实施弹性退休制度暂行办法》）</b></div>'
-      + '<div><b>弹性提前退休：</b>本人自愿，至少在所选退休时间前 3 个月以书面形式告知所在单位；提前时间距法定退休年龄最长不超过 3 年，且不得低于本人原法定退休年龄。</div>'
-      + '<div><b>弹性延迟退休：</b>须与所在单位协商一致；延迟时间距法定退休年龄最长不超过 3 年。</div>'
-      + '<div><b>灵活就业参保人员：</b>本人自愿申请即可。</div>'
+    /* 五、关于弹性退休 — 仅作政策科普（浓缩到 3 句），不写年限细节、不写办理细则，
+       末句统一引导回上一页底部「关于弹性退休」查询详情。 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">五、关于弹性退休</div>';
+    h += '<div style="font-size:13.5px;color:#334155;line-height:1.9;">'
+      + '<div>弹性退休是国家政策。它和法定退休的区别就两条：<b>交社保的年龄不一样，交社保的年限不一样</b>。</div>'
+      + '<div>选弹性退休，可以早一点领钱，但缴得少，以后每月也领得少一些；按法定退休还要继续缴费、晚一点领，将来的养老金会高一些。</div>'
+      + '<div>两种方式分别要缴多少年、您本人还差多少，请返回上一页，点开底部「关于弹性退休」查询详情。</div>'
       + '</div>';
     /* 尾注 */
     h += '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11.5px;color:#94a3b8;text-align:center;line-height:1.7;">本报告由「安享养老」测算结果整理生成 · 仅供个人参考，退休政策与待遇以当地社保经办机构最终核定为准</div>';
@@ -5435,10 +5480,15 @@
 
   /** 打开详情报告全屏预览：正文 + 60 秒倒计时；到期 → 正文收起 + 锁定层 + 付费弹窗。
    *  开发者模式（?dev=1）不限时。 */
-  function diagOpenReportPreview() {
+  function diagOpenReportPreview(opt) {
+    var paid = !!(opt && opt.paid);
     if (!_diagReportSnap) {
       toast('请先完成一次测算');
       return;
+    }
+    if (paid) {
+      if (!diagHasEntitlement()) { diagOpenPaywall(); return; }
+      diagConsumeChance();
     }
     var ov = $('diagReportOverlay');
     if (!ov) {
@@ -5458,13 +5508,17 @@
     }
     var body = $('diagReportBody');
     var lock = $('diagReportLock');
-    body.innerHTML = diagBuildReportHtml();
+    body.innerHTML = diagBuildReportHtml({ showAnswers: paid });
     body.style.display = 'block';
     lock.style.display = 'none';
     ov.style.display = 'block';
     ov.scrollTop = 0;
     diagStopReportTimer();
     var cnt = $('diagReportCount');
+    if (paid) {
+      cnt.textContent = '已解锁 · 完整报告（无限时预览）';
+      return;
+    }
     if (diagDevOn()) {
       cnt.textContent = '开发者模式：预览不限时';
       return;
@@ -5484,8 +5538,8 @@
         lock.style.display = 'block';
         cnt.textContent = '预览已结束';
         var lb = $('diagReportLockBuy');
-        if (lb) lb.onclick = diagOpenExportPaywall;
-        diagOpenExportPaywall();
+        if (lb) lb.onclick = diagOpenPaywall;
+        diagOpenPaywall();
         return;
       }
       cnt.textContent = '免费预览还剩 ' + left + ' 秒';
@@ -5513,6 +5567,7 @@
     var box = $('diagAns');
     if (!box) return;
     if (box.getAttribute('data-unlocked') === '1') return;
+    if (!diagHasEntitlement()) return; // 仅 ¥1 权益持有者可看
     if (!_diagAnsCache) return;
     var spans = box.querySelectorAll('[data-ans]');
     for (var i = 0; i < spans.length; i += 1) {
@@ -5528,16 +5583,22 @@
 
   /** 绑定「查看详情」按钮 + 答案卡解锁点击（幂等，只绑一次）。 */
   var _diagCtaBound = false;
+  /** 四行卡解锁点击：有 ¥1 权益 → 展开答案；无 → 弹付费框。 */
+  function diagAnsUnlockClick() {
+    if (diagHasEntitlement()) { diagRevealAnswer(); }
+    else { diagOpenPaywall(); }
+  }
+
   function diagBindCta() {
     if (_diagCtaBound) return;
     var btn = $('diagDetailBtn');
     if (btn) {
-      /* 【v1.0.35 详情报告】点击 → 免费预览 60 秒 → 到期弹「导出 PDF ¥3」 */
-      btn.onclick = function () { diagOpenReportPreview(); };
+      /* 【v1.0.x 付费门禁】序列 A：点「查看详情」→ 双档付费框 → 暂不需要才进 60s 免费预览 */
+      btn.onclick = function () { diagOpenPaywall(); };
     }
     var unlock = $('diagAnsUnlock');
     if (unlock) {
-      unlock.onclick = function () { diagRevealAnswer(); };
+      unlock.onclick = function () { diagAnsUnlockClick(); };
     }
     _diagCtaBound = true;
   }
@@ -8751,17 +8812,19 @@
   function enterStaff() {
     try { showPage('page-split'); } catch (e) { console.error('enterStaff showPage:', e); }
     try { window.scrollTo(0, 0); } catch (e2) {}
-    /* 【v1.0.34 续·手动录入】每次从首页进分流页，复位卡片 A 锁定态到 initial：
-       字段可编辑、确认键显、重新输入/清空隐、注脚回默认。值保留不清除。 */
-    try { splitSetFieldLock(false); } catch (eL) {}
-    try { splitSetButtons('initial'); } catch (eB) {}
-    try { splitSetNote('不填也可以，直接在下面选。', false); } catch (eN) {}
+    /* 【本轮·保留锁定态】不再每次复位为 initial：按上次的锁定模式原样恢复
+       （initial 未锁 / id 身份证锁 / manual 手动确认锁）。字段值本就保留、不清除，
+       故「已确认」的信息在返回首页再进来后依旧完整，不会被清掉、也不用重填。 */
+    try { restoreSplitLockState(); } catch (eR) {}
   }
 
   /** 【v1.0.33】分流页 · 卡片 B「我的退休测算」：原「直接进入表单」逻辑 + 显式深度模式。
    *  表单存在的意义就是深度测算（表单内二选一已删），故显式 setQueryMode('deep')。 */
   function enterStaffDeep() {
-    $('category').value = 'ENT_W50';
+    /* 【本轮·信息移交】先把卡片 A 已填的 出生年月 / 性别 / 身份类别 搬进主表单，避免用户重填；
+       卡片 A 未选身份类别时才用默认值 ENT_W50 —— 不再无条件重置，防止覆盖用户的选择。 */
+    var carried = syncSplitToMainForm();
+    if (!carried.cat) { $('category').value = 'ENT_W50'; }
     updateCategoryHint(); // 切换表单显示（.value 赋值不触发 change，必须显式调用）
     try { setQueryMode('deep'); } catch (eQ) { console.error('enterStaffDeep setQueryMode:', eQ); }
     showPage('page-input');
@@ -8809,7 +8872,7 @@
   }
 
   bindActivate($('entryStaff'), enterStaff);
-  bindActivate($('entryInst'), enterInstitution);
+  bindActivate($('entryInst'), function () { toast('该功能正在维护中'); });
   bindActivate($('entryCompare'), enterCompare);
   bindActivate($('btnHomeStart'), enterStaff);
   bindActivate($('reverseEntry'), function () { toggleReverse(); });
@@ -8824,6 +8887,9 @@
    *  清空身份证 → 解锁恢复可编辑（防解析错后用户无法手动修正）。
    *  视觉置灰 + 浅蓝小注，遵循去红规范。身份类别不锁（身份证不含此信息，仍由用户选）。
    *  不动主表单 #idCard（它带独立的锁定/降级逻辑），两者互不影响。 */
+  /** 【本轮·保留锁定态】卡片 A 当前锁定模式（initial 未锁 / id 身份证锁 / manual 手动确认锁）。
+      跨「返回首页 → 再进职工板块」保留：用户已确认/已解析的信息不被打回可编辑态。 */
+  var _splitLockMode = 'initial';
   /** 共享：置灰锁定视觉（身份证路径与手动路径共用同一套样式，遵循去红规范）。 */
   function splitSetFieldLock(locked) {
     var by = $('splitBirthY'), bm = $('splitBirthM'), gr = $('splitGenderRow'), idEl = $('splitIdCard');
@@ -8836,6 +8902,7 @@
   }
   /** 共享：解锁态按键显隐。mode = initial(未锁) | id(身份证锁) | manual(手动确认锁)。 */
   function splitSetButtons(mode) {
+    _splitLockMode = mode; /* 【本轮·保留锁定态】记录当前模式，供 enterStaff 原样恢复 */
     var confirm = $('splitConfirm'), reinput = $('splitReinput'), clear = $('splitIdClear');
     if (confirm) confirm.style.display = (mode === 'initial') ? '' : 'none';
     if (reinput) reinput.style.display = (mode === 'manual') ? '' : 'none';
@@ -8905,6 +8972,46 @@
     unlockSplitFieldsManual();
   });
 
+  /** 【本轮·保留锁定态】按 _splitLockMode 原样恢复卡片 A 的锁定视觉。
+   *  值本就保留、不清除，此处仅还原 UI 态，避免用户再次进入时被打回可编辑。 */
+  function restoreSplitLockState() {
+    if (_splitLockMode === 'id') {
+      splitSetFieldLock(true); splitSetButtons('id');
+      splitSetNote('已按身份证自动填入 · 如需修改请先清空身份证', true);
+    } else if (_splitLockMode === 'manual') {
+      splitSetFieldLock(true); splitSetButtons('manual');
+      splitSetNote('已确认，如需修改请点「重新输入」', true);
+    } else {
+      splitSetFieldLock(false); splitSetButtons('initial');
+      splitSetNote('不填也可以，直接在下面选。', false);
+    }
+  }
+
+  /** 【本轮·信息移交】把分流页卡片 A 的 出生年月 / 性别 / 身份类别 搬进主表单
+   *  （供卡片 B「填写参保信息并测算」与简易结果页「深度测算」共用同一套搬运逻辑）。
+   *  有值才写、不把主表单覆盖为空；身份类别仅当卡片 A 为空时才由调用方补默认值。
+   *  返回 {gender,y,m,cat}，调用方据此决定是否回填默认身份类别并刷新表单显隐。 */
+  function syncSplitToMainForm() {
+    var out = { gender: '', y: '', m: '', cat: '' };
+    try {
+      var gEl = document.querySelector('#splitGenderRow input[name="splitGender"]:checked');
+      if (gEl && gEl.value) out.gender = gEl.value;
+      var byEl = $('splitBirthY'), bmEl = $('splitBirthM'), catEl = $('splitCategory');
+      if (byEl && byEl.value) out.y = byEl.value;
+      if (bmEl && bmEl.value) out.m = bmEl.value;
+      if (catEl && catEl.value) out.cat = catEl.value;
+      if (out.gender) {
+        var radios = document.querySelectorAll('input[name="gender"]');
+        for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === out.gender);
+        if (typeof state !== 'undefined' && state) state.gender = out.gender;
+      }
+      if (out.y) $('birthY').value = out.y;
+      if (out.m) $('birthM').value = out.m;
+      if (out.cat) $('category').value = out.cat;
+    } catch (e) { console.error('syncSplitToMainForm:', e); }
+    return out;
+  }
+
   /** 【v1.0.34】卡片 A 提示条的默认态文案（与 HTML 里 #splitAHint 的初始内容一致）。
       用途：校验开始前先复位、提交成功后也复位，避免上一次的报错残留。 */
   var SPLIT_A_HINT_DEFAULT = '这里只算退休时间，不含养老金金额。';
@@ -8966,22 +9073,8 @@
    *  其余深度字段（首次/最后参保时间、累计已缴、视同缴费等）保持空白待填。
    *  机关事业单位整套计算逻辑完全不动——此处只搬运选择值，不触碰任何引擎。 */
   function goDeepFromSimple() {
-    try {
-      var gEl = document.querySelector('#splitGenderRow input[name="splitGender"]:checked');
-      var gender = gEl ? gEl.value : '';
-      var byEl = $('splitBirthY'), bmEl = $('splitBirthM'), catEl = $('splitCategory');
-      var by = byEl ? byEl.value : '';
-      var bm = bmEl ? bmEl.value : '';
-      var cat = (catEl && catEl.value) ? catEl.value : 'ENT_W50';
-      if (gender) {
-        var radios = document.querySelectorAll('input[name="gender"]');
-        for (var i = 0; i < radios.length; i += 1) radios[i].checked = (radios[i].value === gender);
-        if (typeof state !== 'undefined' && state) state.gender = gender;
-      }
-      if (by) $('birthY').value = by;
-      if (bm) $('birthM').value = bm;
-      if (cat) { $('category').value = cat; updateCategoryHint(); }
-    } catch (e) { console.error('goDeepFromSimple sync:', e); }
+    /* 【本轮】与卡片 B 共用同一套搬运逻辑（原内联逻辑抽为 syncSplitToMainForm，两处入口行为一致）。 */
+    try { syncSplitToMainForm(); updateCategoryHint(); } catch (e) { console.error('goDeepFromSimple sync:', e); }
     try { setQueryMode('deep'); } catch (e) { console.error('goDeepFromSimple setQueryMode:', e); }
     showPage('page-input');
     showInputPane('pane-basic');
@@ -14119,6 +14212,19 @@
       }
     }, 120);
   });
+  /* 【本轮修复·双键盘】focusin 在 focus 之后才 lockNative，系统键盘已弹出（竞态）。
+     改为在 touchstart / pointerdown 捕获阶段（focus 之前）先锁，从源头压住系统键盘。
+     isMobile / numericTarget / lockNative 均为本模块已定义符号。 */
+  function npPreLock(e) {
+    if (!isMobile()) return;
+    var t = e.target;
+    if (!t || t.tagName !== 'INPUT') return;
+    if (!numericTarget(t)) return;
+    lockNative(t);
+  }
+  document.addEventListener('touchstart', npPreLock, true);
+  if (window.PointerEvent) document.addEventListener('pointerdown', npPreLock, true);
+
 /* 注意：本模块刻意不采用标准 IIFE 收尾的那个「五字符序列」
    （依次为：右花括号、右圆括号、左圆括号、右圆括号、半角分号），
    而改用参数括号在后的等价写法（见下行收尾）。
