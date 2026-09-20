@@ -1915,7 +1915,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.34 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.35 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -1968,6 +1968,10 @@
               <label><input type="radio" name="splitGender" value="M"> 男</label>
               <label><input type="radio" name="splitGender" value="F"> 女</label>
             </div>
+          </div>
+          <div class="field" style="gap:3px;margin-top:2px;">
+            <button type="button" id="splitConfirm" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:9px 0;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer;width:100%;">确认</button>
+            <button type="button" id="splitReinput" style="display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:9px 0;font-size:14px;font-weight:700;border-radius:8px;cursor:pointer;width:100%;">重新输入</button>
           </div>
           <div class="field" style="gap:3px;">
             <label for="splitCategory">身份类别（决定原法定退休年龄）</label>
@@ -5231,6 +5235,16 @@
   /** 「您的专属答案」真值缓存：仅存内存，绝不写入 DOM；重置时置 null。 */
   var _diagAnsCache = null;
 
+  /* ---- 【v1.0.35 详情报告预览】----------------------------------------
+   * _diagReportSnap：报告数据快照，renderDiagonal 每次渲染时整体固化，
+   *   预览打开后只读快照、不读实时 DOM ⇒「预览内容 = 出报告那一刻的测算结果」。
+   * _diagReportTimer：预览倒计时句柄；关闭预览 / 到期 / 重新打开前必须清掉。
+   * 免费预览时长 60 秒；开发者模式（?dev=1）不限时。
+   * ------------------------------------------------------------------ */
+  var _diagReportSnap = null;
+  var _diagReportTimer = null;
+  var DIAG_PREVIEW_SECONDS = 60;
+
   /* ---- 开发者调试开关（网址后加 ?dev=1 开启 / ?dev=0 关闭）--------------
      本机调试用的轻量开关，由 URL 查询参数控制并持久化到本机
      （键 pension_mobile_dev_mode），之后即使不带参数也持续生效；
@@ -5301,15 +5315,183 @@
     el.textContent = '开发者模式已开启（在网址后加 ?dev=0 可关闭）';
   }
 
-  /** 付费占位弹窗（独立于专业版 paywall，纯 UI）。需求 3-A / 3-B 统一入口。 */
-  function diagOpenPayPlaceholder() {
+  /* ====================================================================
+   * 【v1.0.35 详情报告预览】「查看详情」完整链路
+   *   点「查看详情」→ 全屏报告预览（免费 60 秒，倒计时可见）
+   *   → 到期正文收起 + 弹「导出 PDF ¥3」。
+   *   支付逻辑本版不开发：¥3 按钮仅 toast 占位。
+   * ==================================================================== */
+
+  /** 报告内表格行拼装（两列：项目 / 内容）。 */
+  function diagReportKvRow(k, v) {
+    return '<tr>'
+      + '<td style="padding:7px 10px;border:1px solid #d1d5db;font-weight:700;color:#334155;background:#f8fafc;white-space:nowrap;">' + esc(k) + '</td>'
+      + '<td style="padding:7px 10px;border:1px solid #d1d5db;color:#0f172a;">' + esc(v || '—') + '</td>'
+      + '</tr>';
+  }
+
+  /** 导出付费弹窗：免费预览结束后的统一出口。
+   *  支付逻辑暂不开发：¥3 按钮点击仅 toast 占位（上线时替换成真实下单）。 */
+  function diagOpenExportPaywall() {
     var html =
-      '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:8px;">🔓 查看完整测算详情</div>'
-      + '<div style="display:flex;justify-content:flex-end;margin-top:14px;">'
-      + '<button type="button" onclick="wbCloseModal()" style="padding:9px 20px;font-size:14px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">我知道了</button>'
+      '<div style="font-size:19px;font-weight:900;color:#1d4ed8;margin-bottom:8px;">🔓 导出完整 PDF 报告</div>'
+      + '<div style="font-size:14px;color:#334155;line-height:1.9;">免费预览已结束。</div>'
+      + '<div style="font-size:14px;color:#334155;line-height:1.9;">导出 PDF 版《退休时间测算报告》：<b style="font-size:17px;color:#1d4ed8;">¥3</b></div>'
+      + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">'
+      + '<button type="button" id="diagPayNoBtn" style="padding:9px 20px;font-size:14px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">暂不需要</button>'
+      + '<button type="button" id="diagPayYesBtn" style="padding:9px 20px;font-size:14px;font-weight:800;color:#fff;background:#1d4ed8;border:1.5px solid #1d4ed8;border-radius:9px;cursor:pointer;">导出 PDF（¥3）</button>'
       + '</div>';
     wbOpenModal(html);
+    var box = $('wbModalBox');
+    var no = box ? box.querySelector('#diagPayNoBtn') : null;
+    var yes = box ? box.querySelector('#diagPayYesBtn') : null;
+    if (no) no.onclick = function () { wbCloseModal(); };
+    if (yes) yes.onclick = function () { wbCloseModal(); toast('支付通道即将开放，敬请期待'); };
   }
+
+  /** 报告正文 HTML（全部取自 _diagReportSnap 快照，不读实时 DOM）。 */
+  function diagBuildReportHtml() {
+    var s = _diagReportSnap;
+    if (!s) return '';
+    var a = s.answers || {};
+    var h = '';
+    /* 抬头 */
+    h += '<div style="text-align:center;padding:18px 0 4px;">'
+      + '<div style="font-size:20px;font-weight:900;color:#0f172a;">安享养老 · 退休时间测算报告</div>'
+      + '<div style="margin-top:6px;font-size:13px;color:#475569;">测算日期：' + esc(s.date) + '</div>'
+      + (s.category ? '<div style="margin-top:2px;font-size:13px;color:#475569;">参保类型：' + esc(s.category) + '</div>' : '')
+      + '<div style="margin-top:8px;font-size:12px;color:#94a3b8;">只需输入：出生年月 + 性别 + 参保类型，软件即可自动生成本报告</div>'
+      + '</div>';
+    /* 一、个人基本信息 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">一、个人基本信息</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:13.5px;">'
+      + diagReportKvRow('出生年月', s.birth)
+      + diagReportKvRow('性别', s.gender)
+      + diagReportKvRow('参保类型', s.category)
+      + diagReportKvRow('当前年龄', s.ageNow)
+      + diagReportKvRow('原法定退休基准', s.baseAge ? s.baseAge + ' 周岁' : '')
+      + '</table>';
+    /* 二、退休节点一览 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">二、退休节点一览</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">'
+      + '<tr>'
+      + '<th style="padding:6px 8px;border:1px solid #d1d5db;background:#eff6ff;color:#1e3a8a;">节点</th>'
+      + '<th style="padding:6px 8px;border:1px solid #d1d5db;background:#eff6ff;color:#1e3a8a;">时间</th>'
+      + '<th style="padding:6px 8px;border:1px solid #d1d5db;background:#eff6ff;color:#1e3a8a;">年龄</th>'
+      + '<th style="padding:6px 8px;border:1px solid #d1d5db;background:#eff6ff;color:#1e3a8a;">说明</th>'
+      + '</tr>';
+    var nodes = s.nodes || [];
+    for (var ri = 0; ri < nodes.length; ri += 1) {
+      var nd = nodes[ri];
+      h += '<tr>'
+        + '<td style="padding:6px 8px;border:1px solid #d1d5db;font-weight:700;color:#0f172a;white-space:nowrap;">' + esc(nd.name) + '</td>'
+        + '<td style="padding:6px 8px;border:1px solid #d1d5db;color:#0f172a;white-space:nowrap;">' + esc(nd.date) + '</td>'
+        + '<td style="padding:6px 8px;border:1px solid #d1d5db;color:#0f172a;white-space:nowrap;">' + esc(nd.age) + '</td>'
+        + '<td style="padding:6px 8px;border:1px solid #d1d5db;color:#475569;">' + esc(nd.desc || '—') + '</td>'
+        + '</tr>';
+    }
+    h += '</table>';
+    /* 三、缴费年限要求（您的专属答案） */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">三、缴费年限要求（您的专属答案）</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:13.5px;">'
+      + diagReportKvRow('弹性退休需缴满', a.flex)
+      + diagReportKvRow('法定退休需缴满', a.legal)
+      + diagReportKvRow('已缴', a.paid)
+      + diagReportKvRow('还差（按弹性退休）', a.gap)
+      + '</table>';
+    /* 四、退休时间弧线图 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">四、退休时间弧线图</div>';
+    h += '<div style="padding:10px 12px;border:1.5px solid #bfdbfe;border-radius:10px;background:#f0f9ff;font-size:13px;color:#1e3a8a;line-height:1.7;">弧线可视化已在测算结果页常驻展示，本报告不重复绘制；四个节点的时间与年龄见上文「二、退休节点一览」。</div>';
+    /* 五、弹性退休政策说明 */
+    h += '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:18px 0 6px;">五、弹性退休政策说明</div>';
+    h += '<div style="font-size:13px;color:#334155;line-height:1.9;">'
+      + '<div><b>什么是弹性退休：</b>指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</div>'
+      + '<div><b>办理前提：</b>必须缴满政策规定对应的养老保险最低缴费年限。</div>'
+      + '<div><b>年限差异：</b>弹性退休与法定退休两者要求的最低缴费年限标准并不相同。</div>'
+      + '<div style="margin-top:6px;"><b>弹性退休（依据：人社部发〔2024〕94号《实施弹性退休制度暂行办法》）</b></div>'
+      + '<div><b>弹性提前退休：</b>本人自愿，至少在所选退休时间前 3 个月以书面形式告知所在单位；提前时间距法定退休年龄最长不超过 3 年，且不得低于本人原法定退休年龄。</div>'
+      + '<div><b>弹性延迟退休：</b>须与所在单位协商一致；延迟时间距法定退休年龄最长不超过 3 年。</div>'
+      + '<div><b>灵活就业参保人员：</b>本人自愿申请即可。</div>'
+      + '</div>';
+    /* 尾注 */
+    h += '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11.5px;color:#94a3b8;text-align:center;line-height:1.7;">本报告由「安享养老」测算结果整理生成 · 仅供个人参考，退休政策与待遇以当地社保经办机构最终核定为准</div>';
+    return h;
+  }
+
+  /** 停止预览倒计时（关闭 / 到期 / 重新打开前都要调用，防句柄泄漏）。 */
+  function diagStopReportTimer() {
+    if (_diagReportTimer) {
+      clearInterval(_diagReportTimer);
+      _diagReportTimer = null;
+    }
+  }
+
+  /** 关闭详情报告预览层。 */
+  function diagCloseReportPreview() {
+    diagStopReportTimer();
+    var ov = $('diagReportOverlay');
+    if (ov) ov.style.display = 'none';
+  }
+
+  /** 打开详情报告全屏预览：正文 + 60 秒倒计时；到期 → 正文收起 + 锁定层 + 付费弹窗。
+   *  开发者模式（?dev=1）不限时。 */
+  function diagOpenReportPreview() {
+    if (!_diagReportSnap) {
+      toast('请先完成一次测算');
+      return;
+    }
+    var ov = $('diagReportOverlay');
+    if (!ov) {
+      /* 全屏层挂在 body 下（.page 显隐不影响）；z-index 95000，低于通用弹窗 99999 */
+      ov = document.createElement('div');
+      ov.id = 'diagReportOverlay';
+      ov.style.cssText = 'display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:95000;background:#f5f7fa;overflow-y:auto;';
+      ov.innerHTML = '<div id="diagReportBar" style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#fff;border-bottom:1.5px solid #dbeafe;">'
+        + '<span id="diagReportCount" style="font-size:14px;font-weight:800;color:#1d4ed8;"></span>'
+        + '<button type="button" id="diagReportCloseBtn" style="flex:0 0 auto;padding:7px 14px;font-size:13px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1.5px solid #dbeafe;border-radius:9px;cursor:pointer;">关闭 ✕</button>'
+        + '</div>'
+        + '<div id="diagReportBody" style="max-width:480px;margin:0 auto;padding:4px 16px 40px;"></div>'
+        + '<div id="diagReportLock" style="display:none;max-width:480px;margin:0 auto;padding:70px 16px;text-align:center;"></div>';
+      document.body.appendChild(ov);
+      var cb = $('diagReportCloseBtn');
+      if (cb) cb.onclick = diagCloseReportPreview;
+    }
+    var body = $('diagReportBody');
+    var lock = $('diagReportLock');
+    body.innerHTML = diagBuildReportHtml();
+    body.style.display = 'block';
+    lock.style.display = 'none';
+    ov.style.display = 'block';
+    ov.scrollTop = 0;
+    diagStopReportTimer();
+    var cnt = $('diagReportCount');
+    if (diagDevOn()) {
+      cnt.textContent = '开发者模式：预览不限时';
+      return;
+    }
+    var left = DIAG_PREVIEW_SECONDS;
+    cnt.textContent = '免费预览还剩 ' + left + ' 秒';
+    _diagReportTimer = setInterval(function () {
+      left -= 1;
+      if (left <= 0) {
+        diagStopReportTimer();
+        /* 到期：正文收起 → 锁定层 → 弹「导出 PDF ¥3」 */
+        body.style.display = 'none';
+        lock.innerHTML = '<div style="font-size:40px;">🔒</div>'
+          + '<div style="margin-top:10px;font-size:16px;font-weight:800;color:#0f172a;">免费预览已结束</div>'
+          + '<div style="margin-top:6px;font-size:13.5px;color:#475569;line-height:1.7;">导出 PDF 版《退休时间测算报告》 ¥3</div>'
+          + '<button type="button" id="diagReportLockBuy" style="margin-top:18px;background:#1d4ed8;color:#fff;border:none;padding:11px 26px;font-size:15px;font-weight:800;border-radius:9px;cursor:pointer;">查看导出价格</button>';
+        lock.style.display = 'block';
+        cnt.textContent = '预览已结束';
+        var lb = $('diagReportLockBuy');
+        if (lb) lb.onclick = diagOpenExportPaywall;
+        diagOpenExportPaywall();
+        return;
+      }
+      cnt.textContent = '免费预览还剩 ' + left + ' 秒';
+    }, 1000);
+  }
+  window.diagCloseReportPreview = diagCloseReportPreview;
 
   /** 重置「您的专属答案」卡：四值回遮蔽符、移除 .done、清空内存真值。
    *  每次新提交（enterDiagonalPreview）调用一次 ⇒ 一次新提交＝一次付费意愿机会。 */
@@ -5350,7 +5532,8 @@
     if (_diagCtaBound) return;
     var btn = $('diagDetailBtn');
     if (btn) {
-      btn.onclick = function () { diagOpenPayPlaceholder(); };
+      /* 【v1.0.35 详情报告】点击 → 免费预览 60 秒 → 到期弹「导出 PDF ¥3」 */
+      btn.onclick = function () { diagOpenReportPreview(); };
     }
     var unlock = $('diagAnsUnlock');
     if (unlock) {
@@ -5506,6 +5689,7 @@
     var DOT_COLOR = ['#0084c9', '#029c46', '#68d045', '#049947'];
 
     var html = '';
+    var repNodes = []; /* 【v1.0.35 详情报告】同步收集节点，供报告快照用 */
     for (var i = 0; i < n; i += 1) {
       var nd = list[i];
       var P = anchors[i];
@@ -5524,6 +5708,8 @@
          不再重复年月。 */
       var ageTxt = ageLines[1] || '';
       var desc = diagDescOf(nd);
+      /* 【v1.0.35 详情报告】收集：名称 / 日期 / 年龄 / 说明（原始字符串，渲染时再转义） */
+      repNodes.push({ name: nd.name, date: dateTxt, age: ageTxt, desc: desc ? desc.text : '' });
       var dxy = (n === 4 && LBL_DXY[i]) ? LBL_DXY[i] : { dx: 0, dy: -30 };
       var dotColor = (n === 4 && DOT_COLOR[i]) ? DOT_COLOR[i] : DOT_COLOR[1];
       html += '<div class="diag-node" style="left:' + leftPct.toFixed(2) + '%;top:' + topPct.toFixed(2) + '%;">'
@@ -5537,6 +5723,19 @@
         + '</div>';
     }
     box.innerHTML = html;
+
+    /* 【v1.0.35 详情报告】固化报告快照：预览内容 = 本次测算那一刻的结果 */
+    _diagReportSnap = {
+      date: (function () { var d = new Date(); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月'; }()),
+      birth: (c && typeof c.birthYM !== 'undefined') ? ymText(c.birthYM) : '',
+      gender: (typeof state !== 'undefined' && state && state.gender === 'F') ? '女'
+            : ((typeof state !== 'undefined' && state && state.gender === 'M') ? '男' : ''),
+      category: (c && c.categoryName) ? c.categoryName : '',
+      ageNow: (c && typeof c.nowAgeMonths !== 'undefined') ? ageText(c.nowAgeMonths) : '',
+      baseAge: (c && typeof c.baseAge !== 'undefined') ? String(c.baseAge) : '',
+      answers: _diagAnsCache,
+      nodes: repNodes
+    };
 
     // 需求 2：展示对角线时，临时隐藏旧横向时间轴 + 明细表（DOM / 代码保留，可一键切回）
     diagApplyHideLegacy();
@@ -8552,6 +8751,11 @@
   function enterStaff() {
     try { showPage('page-split'); } catch (e) { console.error('enterStaff showPage:', e); }
     try { window.scrollTo(0, 0); } catch (e2) {}
+    /* 【v1.0.34 续·手动录入】每次从首页进分流页，复位卡片 A 锁定态到 initial：
+       字段可编辑、确认键显、重新输入/清空隐、注脚回默认。值保留不清除。 */
+    try { splitSetFieldLock(false); } catch (eL) {}
+    try { splitSetButtons('initial'); } catch (eB) {}
+    try { splitSetNote('不填也可以，直接在下面选。', false); } catch (eN) {}
   }
 
   /** 【v1.0.33】分流页 · 卡片 B「我的退休测算」：原「直接进入表单」逻辑 + 显式深度模式。
@@ -8620,29 +8824,49 @@
    *  清空身份证 → 解锁恢复可编辑（防解析错后用户无法手动修正）。
    *  视觉置灰 + 浅蓝小注，遵循去红规范。身份类别不锁（身份证不含此信息，仍由用户选）。
    *  不动主表单 #idCard（它带独立的锁定/降级逻辑），两者互不影响。 */
-  function lockSplitFieldsFromId() {
+  /** 共享：置灰锁定视觉（身份证路径与手动路径共用同一套样式，遵循去红规范）。 */
+  function splitSetFieldLock(locked) {
     var by = $('splitBirthY'), bm = $('splitBirthM'), gr = $('splitGenderRow'), idEl = $('splitIdCard');
-    if (by) { by.disabled = true; by.style.background = '#f1f5f9'; by.style.color = '#94a3b8'; by.style.cursor = 'not-allowed'; }
-    if (bm) { bm.disabled = true; bm.style.background = '#f1f5f9'; bm.style.color = '#94a3b8'; bm.style.cursor = 'not-allowed'; }
     var rs = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
-    for (var i = 0; i < rs.length; i += 1) rs[i].disabled = true;
-    if (gr) gr.style.opacity = '0.55';
-    if (idEl) { idEl.readOnly = true; idEl.style.background = '#f1f5f9'; idEl.style.color = '#94a3b8'; }
-    var clr = $('splitIdClear'); if (clr) clr.style.display = '';
+    if (by) { by.disabled = locked; by.style.background = locked ? '#f1f5f9' : ''; by.style.color = locked ? '#94a3b8' : ''; by.style.cursor = locked ? 'not-allowed' : ''; }
+    if (bm) { bm.disabled = locked; bm.style.background = locked ? '#f1f5f9' : ''; bm.style.color = locked ? '#94a3b8' : ''; bm.style.cursor = locked ? 'not-allowed' : ''; }
+    for (var i = 0; i < rs.length; i += 1) rs[i].disabled = locked;
+    if (gr) gr.style.opacity = locked ? '0.55' : '';
+    if (idEl) { idEl.readOnly = locked; idEl.style.background = locked ? '#f1f5f9' : ''; idEl.style.color = locked ? '#94a3b8' : ''; }
+  }
+  /** 共享：解锁态按键显隐。mode = initial(未锁) | id(身份证锁) | manual(手动确认锁)。 */
+  function splitSetButtons(mode) {
+    var confirm = $('splitConfirm'), reinput = $('splitReinput'), clear = $('splitIdClear');
+    if (confirm) confirm.style.display = (mode === 'initial') ? '' : 'none';
+    if (reinput) reinput.style.display = (mode === 'manual') ? '' : 'none';
+    if (clear) clear.style.display = (mode === 'id') ? '' : 'none';
+  }
+  function splitSetNote(text, blue) {
     var hint = $('splitIdHint');
-    if (hint) { hint.textContent = '已按身份证自动填入 · 如需修改请先清空身份证'; hint.style.color = '#1d4ed8'; }
+    if (hint) { hint.textContent = text; hint.style.color = blue ? '#1d4ed8' : ''; }
+  }
+  /** 身份证解析成功 → 锁定出生年月+性别+身份证框，走「清空」解锁。 */
+  function lockSplitFieldsFromId() {
+    splitSetFieldLock(true);
+    splitSetButtons('id');
+    splitSetNote('已按身份证自动填入 · 如需修改请先清空身份证', true);
   }
   function unlockSplitFieldsFromId() {
-    var by = $('splitBirthY'), bm = $('splitBirthM'), gr = $('splitGenderRow'), idEl = $('splitIdCard');
-    if (by) { by.disabled = false; by.style.background = ''; by.style.color = ''; by.style.cursor = ''; }
-    if (bm) { bm.disabled = false; bm.style.background = ''; bm.style.color = ''; bm.style.cursor = ''; }
-    var rs = document.querySelectorAll('#splitGenderRow input[name="splitGender"]');
-    for (var i = 0; i < rs.length; i += 1) rs[i].disabled = false;
-    if (gr) gr.style.opacity = '';
-    if (idEl) { idEl.readOnly = false; idEl.style.background = ''; idEl.style.color = ''; }
-    var clr = $('splitIdClear'); if (clr) clr.style.display = 'none';
-    var hint = $('splitIdHint');
-    if (hint) { hint.textContent = '不填也可以，直接在下面选。'; hint.style.color = ''; }
+    splitSetFieldLock(false);
+    splitSetButtons('initial');
+    splitSetNote('不填也可以，直接在下面选。', false);
+  }
+  /** 【v1.0.34 续·手动录入】用户填完出生年月+性别后点「确认」→ 同款置灰锁定；
+   *  身份证框一并只读（不可再输入）；走「重新输入」解锁（值保留、恢复可编辑）。 */
+  function lockSplitFieldsManual() {
+    splitSetFieldLock(true);
+    splitSetButtons('manual');
+    splitSetNote('已确认，如需修改请点「重新输入」', true);
+  }
+  function unlockSplitFieldsManual() {
+    splitSetFieldLock(false);
+    splitSetButtons('initial');
+    splitSetNote('不填也可以，直接在下面选。', false);
   }
   function onSplitIdInput() {
     var hint = $('splitIdHint');
@@ -8673,6 +8897,12 @@
     if (idEl) { idEl.value = ''; idEl.readOnly = false; }
     unlockSplitFieldsFromId();
     if (idEl) idEl.focus();
+  });
+  if ($('splitConfirm')) $('splitConfirm').addEventListener('click', function () {
+    lockSplitFieldsManual();
+  });
+  if ($('splitReinput')) $('splitReinput').addEventListener('click', function () {
+    unlockSplitFieldsManual();
   });
 
   /** 【v1.0.34】卡片 A 提示条的默认态文案（与 HTML 里 #splitAHint 的初始内容一致）。
