@@ -352,6 +352,12 @@
   /* position:relative → 让 .basic-lock-overlay 只覆盖「身份证导入 + 手动输入」两块板，
      绝不会盖到下方的首次/最后/累计参保时间等核心输入框。 */
   .boards{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:6px 0 10px;}
+
+  /* 【v1.0.38·携值收起】仅样式隐藏，绝不删节点、绝不 removeChild / innerHTML='' / remove()。
+     #birthY/#birthM/#genderRow（及机关 #govBirthY/#govBirthM/#govGenderRow）是受保护引擎
+     readForm()/govCalc 的数据源；#idCard 还被内置数字键盘模块登记（启动时预置三个身份证框之一）。
+     真删 ⇒ 计算取不到出生年月、键盘初始化报错。故只加 class 隐藏，DOM 节点与值全部保留。 */
+  .carry-hidden{display:none !important;}
   .board{border:1.5px solid #c4d0dc;border-radius:10px;padding:12px 14px;background:#fff;box-shadow:0 1px 4px rgba(20,40,80,.04);}
   #boardBasic{border:1.5px solid #c4d0dc;}
   .board-title{font-size:18px;font-weight:800;color:#334155;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid #94a3b8;text-align:center;}
@@ -1933,7 +1939,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.37 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.38 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -2074,14 +2080,17 @@
         <h2>① 基本信息（必填）</h2>
         <div class="section-tip">支持身份证一键解析，也可手动输入。</div>
 
+        <!-- 【v1.0.38·携值收起】提示条从 .boards 内移出，独立挂在 #boardBasic 下：
+             携值锁定时 .boards 会整体 display:none，提示条若仍在其内部会被一并藏掉；
+             移出后收起状态下提示条与「解锁修改」仍可见（用户看得懂这一节为何消失）。 -->
+        <div class="basic-lock-overlay" id="basicLockOverlay">
+          <div class="lock-text">🔒 基本信息已锁定，防止误操作</div>
+          <div class="lock-tip">如需要修改，请先解锁</div>
+          <button type="button" class="btn-ghost" id="btnUnlockBasic">解锁修改</button>
+        </div>
+
         <div class="boards">
-          <!-- 锁定遮罩只挂在 .boards 上：仅覆盖身份证导入 / 手动输入两块板，
-               不会遮挡下方的「首次参保 / 最后参保 / 累计已缴」输入框。 -->
-          <div class="basic-lock-overlay" id="basicLockOverlay">
-            <div class="lock-text">🔒 基本信息已锁定，防止误操作</div>
-            <div class="lock-tip">如需要修改，请先解锁</div>
-            <button type="button" class="btn-ghost" id="btnUnlockBasic">解锁修改</button>
-          </div>
+          <!-- 锁定提示条已上移至 .boards 之外（见上方 #basicLockOverlay）。 -->
 
           <!-- 左：身份证一键导入 -->
           <div class="board">
@@ -9088,8 +9097,76 @@
       if (out.y) $('birthY').value = out.y;
       if (out.m) $('birthM').value = out.m;
       if (out.cat) $('category').value = out.cat;
+      /* 【v1.0.38·机关搬运·真缺陷修复】卡片 A 选机关类身份（GOV / GOV_W50）时主表单切到机关
+         表单，必须把 出生年月 / 性别 同步写入机关字段；否则机关出生年月/性别始终为空、
+         用户被强制重填（applyCarryLock 只锁了企业字段，此时企业字段已隐藏、对机关无效）。
+         有值才写，沿用本函数「不覆盖为空」风格；身份证号按既有约定不搬运（#govIdCard 不动）。 */
+      if (out.gender) {
+        var grs = document.querySelectorAll('#govGenderRow input[name="govGender"]');
+        for (var gk = 0; gk < grs.length; gk += 1) grs[gk].checked = (grs[gk].value === out.gender);
+      }
+      if (out.y && $('govBirthY')) $('govBirthY').value = out.y;
+      if (out.m && $('govBirthM')) $('govBirthM').value = out.m;
     } catch (e) { console.error('syncSplitToMainForm:', e); }
     return out;
+  }
+
+  /** 【v1.0.38·携值收起】携值锁定时，把「已由卡片 A 带入」的基本信息节收起。
+   *  ★ 铁律：只做样式隐藏（加 class），DOM 节点与值【全部保留】——严禁 removeChild /
+   *    innerHTML='' / .remove()。#birthY/#birthM/#genderRow（及机关 #govBirthY/#govBirthM/
+   *    #govGenderRow）是受保护引擎 readForm()/govCalc 的数据源；#idCard 还被内置数字键盘
+   *    模块登记（启动时预置三个身份证框之一）。真删 ⇒ 计算取不到出生年月、键盘初始化报错。
+   *  收起目标三处：企业 .boards、手机端折叠组头 .mt-ghd[data-g="1"]（组头是独立元素，
+   *  只藏 .boards 会留下一个空的「身份与出生信息」折叠头）、机关 .gov-basic-grid。
+   *  机关收起时另建一条不会被隐藏的提示条（#govCarryLockTip），使机关侧也有「解锁修改」。 */
+  function setCarryHide(hidden) {
+    try {
+      var targets = ['#boardBasic .boards', '#boardBasic .mt-ghd[data-g="1"]', '#govForm .gov-basic-grid'];
+      for (var i = 0; i < targets.length; i += 1) {
+        var el = document.querySelector(targets[i]);
+        if (!el) continue;
+        if (hidden) el.classList.add('carry-hidden');
+        else el.classList.remove('carry-hidden');
+      }
+      setGovCarryTip(hidden);
+    } catch (e) { console.error('setCarryHide:', e); }
+  }
+  /** 【v1.0.38·收尾】机关侧提示条。★ 只在「携值收起且当前类别为机关」时才创建节点；
+   *  其余任何时候【绝不产生新 DOM】——否则每次 load 的 resetFormToBlank(false) 都会经
+   *  setCarryHide(false) → 本函数多建一个冗余节点，破坏「非携值零 delta」。
+   *  时机安全：两个调用方 enterStaffDeep / goDeepFromSimple 都是先 updateCategoryHint()
+   *  设好类别、后 applyCarryLock()，且携值期间 #category 被 disabled 不会变。
+   *  按钮直接转发 #btnUnlockBasic 的点击，确保企业/机关解锁口径完全一致。 */
+  function setGovCarryTip(show) {
+    try {
+      var tip = $('govCarryLockTip');
+      if (show !== true) {
+        /* 不显示时绝不创建：不存在 → 直接返回；已存在 → 只去掉 active。 */
+        if (tip) tip.classList.remove('active');
+        return;
+      }
+      /* 仅机关类别才创建：企业携值时它会被建在 display:none 的 #govForm 里，属纯冗余节点。 */
+      var catEl = $('category');
+      if (!catEl || !/^GOV/.test(catEl.value || '')) return;
+      var govGrid = document.querySelector('#govForm .gov-basic-grid');
+      if (!govGrid || !govGrid.parentNode) return;
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'govCarryLockTip';
+        tip.className = 'basic-lock-overlay';
+        tip.innerHTML = '<div class="lock-text">🔒 已从上方带入，无需重填</div>'
+          + '<div class="lock-tip"></div>'
+          + '<button type="button" class="btn-ghost" id="govBtnUnlockBasic">解锁修改</button>';
+        govGrid.parentNode.insertBefore(tip, govGrid);
+        var gbtn = $('govBtnUnlockBasic');
+        if (gbtn) gbtn.addEventListener('click', function () {
+          var main = $('btnUnlockBasic');
+          if (main) { main.click(); return; }
+          setCarryHide(false);
+        });
+      }
+      tip.classList.add('active');
+    } catch (e) { console.error('setGovCarryTip:', e); }
   }
 
   /** 【v1.0.37 续·携值锁定】把卡片 A 的「已锁定」语义一并搬到深度表单。
@@ -9107,8 +9184,8 @@
   function applyCarryLock(carried) {
     try {
       var aLocked = (_splitLockMode === 'id' || _splitLockMode === 'manual');
-      if (!aLocked) return false;
-      if (!carried || !carried.gender || !carried.y || !carried.m) return false;
+      if (!aLocked) { setCarryHide(false); return false; }
+      if (!carried || !carried.gender || !carried.y || !carried.m) { setCarryHide(false); return false; }
       /* ①出生年月 + 性别：复用既有「手动确认」锁（birthY/birthM disabled + 性别灰掉不可点） */
       state.idLocked = false;
       state.manualLocked = true;
@@ -9135,6 +9212,13 @@
         ov.classList.add('active');
         state.basicLocked = true;
       }
+      /* 【v1.0.38·携值收起】携值锁定成立 → 收起「已带入」的基本信息节（仅样式隐藏，DOM 全留）。 */
+      setCarryHide(true);
+      /* 机关提示条文案与企业侧一致（懒创建后再回填文本） */
+      var _gtip = $('govCarryLockTip');
+      var _gtipLp = _gtip ? _gtip.querySelector('.lock-tip') : null;
+      var _ovLp = ov ? ov.querySelector('.lock-tip') : null;
+      if (_gtipLp && _ovLp) _gtipLp.textContent = _ovLp.textContent;
       return true;
     } catch (e) {
       console.error('applyCarryLock:', e);
@@ -9914,6 +9998,8 @@
     setBirthLocked(false);
     ensureTimeFieldsEditable();
     state.basicLocked = false;
+    /* 【v1.0.38·携值收起】整表复位时一并清掉携值收起态，避免残留导致下次进来这一节无故消失。 */
+    setCarryHide(false);
     var ov = $('basicLockOverlay');
     if (ov) ov.classList.remove('active');
     /* 【v1.0.37 续·携值锁定】整表重置时一并放开身份类别，避免携值锁定残留 */
@@ -10779,6 +10865,8 @@
   $('btnUnlockBasic').addEventListener('click', function () {
     state.basicLocked = false;
     $('basicLockOverlay').classList.remove('active');
+    /* 【v1.0.38·携值收起】解锁 → 基本信息节恢复显示（企业 .boards + 手机组头 / 机关 .gov-basic-grid）。 */
+    setCarryHide(false);
     /* 【v1.0.37 续·携值锁定】点「解锁修改」= 连出生年月/性别/身份类别一起放开。
        否则遮罩消失了、字段仍灰着，用户会以为坏了。视觉复位与 manualReset 一致。 */
     state.manualLocked = false;
