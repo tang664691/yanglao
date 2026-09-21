@@ -1939,7 +1939,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.38 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.39 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -5271,6 +5271,17 @@
    *  由 renderDiagonal 消费。 */
   var _diagPreviewActive = false;
 
+  /** 【v1.0.39 弧线已渲染标记】本次会话内「弧线（对角线预览）是否已渲染过」。
+   *  语义＝会话内不重置（与「携值锁定」口径一致）；仅以下「用户显式要求重来」的入口复位为 false：
+   *    - resetFormToBlank()（整表重置；页面初始化亦经它走 resetFormToBlank(false)）
+   *    - #btnClearForm「一键清空」click 处理器
+   *  置 true：enterDiagonalPreview() 成功进入预览态时。
+   *  ⚠️ 返回首页 / 卡片A「重新输入」(#splitReinput) / 深度表单「重新输入」(manualReset) 均【不】复位——属既定口径，勿误加。
+   *  用途：submitForm() 按此判定是否重放弧线——
+   *    已渲染过（走过卡片A简版查询）⇒ enterCalcPreview()（calc-only，不重放）；
+   *    未渲染过（卡片B 直达深度测算）⇒ enterDiagonalPreview()（正常渲染弧线）。 */
+  var _arcRendered = false;
+
   /** 「您的专属答案」真值缓存：仅存内存，绝不写入 DOM；重置时置 null。 */
   var _diagAnsCache = null;
 
@@ -5901,6 +5912,9 @@
     if (wrapEl) wrapEl.style.display = 'block';
     var cr = $('diagCountRow');
     if (cr) cr.style.display = 'none';
+    /* 【v1.0.39】确实进入预览态（即将渲染弧线）⇒ 记「本次会话已给过弧线」，
+       供 submitForm 判定是否重放。 */
+    _arcRendered = true;
     return true;
   }
 
@@ -8123,9 +8137,13 @@
     state.liteMode = true;
     // 退出「查询（简版）」模式，恢复全版所有区块
     var pr0 = $('page-result'); if (pr0) pr0.classList.remove('query-mode');
-    /* 【v1.0.37 续×4】深度测算不再重复渲染弧线：走「纯计算模式」直接进计算逻辑。
-       弧线已在卡片A简版查询给过（首屏钩子），此处不重放；付费入口仍保留。 */
-    try { enterCalcPreview(); } catch (eDiagS) { console.error('submitForm calcPreview:', eDiagS); }
+    /* 【v1.0.39 弧线重放修复】是否重放弧线，改为按「本次会话内弧线是否已渲染过」判定：
+       - 已渲染过（走过卡片A简版查询）⇒ enterCalcPreview()：纯计算模式，不重放弧线，
+         「关于弹性退休 / 您的专属答案 / 查看详情」付费入口仍保留；
+       - 未渲染过（卡片B 直达深度测算）⇒ enterDiagonalPreview()：正常渲染弧线。
+       修复「从卡片B 进去渲染不出弧线轴」的问题；走过卡片A 的用户仍只看到一次，不重复渲染。 */
+    try { (_arcRendered ? enterCalcPreview() : enterDiagonalPreview()); }
+    catch (eDiagS) { console.error('submitForm diag:', eDiagS); }
     recompute();
     // 展示层：测算成功后留档一条历史记录（recompute 内 snapshotEntResult 已写好 __lastEntResult）。
     // 挂在提交成功分支而非 snapshotEntResult 内：后者会被实时输入的 recompute 反复调用，
@@ -9998,6 +10016,9 @@
     setBirthLocked(false);
     ensureTimeFieldsEditable();
     state.basicLocked = false;
+    /* 【v1.0.39】整表重置＝用户显式要求清空重来：一并复位「弧线已渲染」标记，
+       使卡片B 直达深度测算时重新渲染弧线（会话内其余路径不重置）。 */
+    _arcRendered = false;
     /* 【v1.0.38·携值收起】整表复位时一并清掉携值收起态，避免残留导致下次进来这一节无故消失。 */
     setCarryHide(false);
     var ov = $('basicLockOverlay');
@@ -10044,6 +10065,9 @@
     state.gender = '';   // 新增：性别态同步清空（否则 readForm 回退读到残留值 → 校验被绕过）
     state.computedOnce = false;
     state.pmOverrideAge = null;   // 清空输入同步清除「计发月数」手动锁定
+    /* 【v1.0.39】一键清空＝用户显式要求重来：一并复位「弧线已渲染」标记，
+       使清空后再走卡片B 直达深度测算时重新渲染弧线（与 resetFormToBlank 口径一致）。 */
+    _arcRendered = false;
     toast('已清空所有输入');
   });
   if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
