@@ -1021,6 +1021,10 @@
   #page-result.diag-mode #retireTimelineWrap{display:none!important;}
   #page-result.diag-mode #resultTableSection{display:none!important;}
 
+  /* 【v1.0.40】深度表单页顶部弧线自带渐变定义（#inaDiagGrad），
+     不跨页面引用结果页 #diagGrad；几何/字号/间距等其余样式与结果页完全共用。 */
+  #inaDiagSection .diag-line{stroke:url(#inaDiagGrad);}
+
   .concl{border:1.5px solid #c9d6ea;border-radius:12px;background:#fbfdff;padding:15px 18px;margin-top:18px;
     font-size:14.5px;font-weight:700;color:var(--ink-2);line-height:1.95;}
   .concl b{color:var(--blue);font-weight:900;}
@@ -1939,7 +1943,7 @@
   </div>
   <div class="mobile-brief-tip">本测算仅供个人养老规划参考，实际待遇以社保经办部门核定为准。</div>
   <!-- 应用版本号（与 sw.js 的 SW_VERSION 保持一致，每次发版同步修改；灰色小字，去红铁律） -->
-  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.39 · 数据仅存本机</div>
+  <div id="homeVersion" style="text-align:center;color:#9ca3af;font-size:11.5px;line-height:1.6;margin:4px 0 0;">安享养老 v1.0.40 · 数据仅存本机</div>
 
 </div>
 </section>
@@ -2065,6 +2069,33 @@
 
     <div class="input-tabs" id="inputTabs">
       <button type="button" class="input-tab active" data-pane="pane-basic">① 基本信息</button>
+    </div>
+
+    <!-- ================================================================
+         【v1.0.40】深度表单页顶部弧线时间轴。
+         与结果页 #diagSection 共用同一套绘图核心 diagPaint（无第二套分支），
+         节点数据同样取自 renderTimeline 产出的 window.__tlNodes。
+         仅职工（企业）表单在用时渲染；机关表单不渲染。
+         付费门禁（「您的专属答案」四行卡 / 查看详情）仍只保留在结果页。
+         ================================================================ -->
+    <div class="card" id="inaDiagSection" style="display:none;padding:12px 14px 14px;">
+      <div class="diag-wrap" id="inaDiagWrap">
+        <svg class="diag-svg" id="inaDiagSvg" viewBox="0 0 332 820" aria-hidden="true">
+          <defs>
+            <linearGradient id="inaDiagGrad" x1="0" y1="0" x2="0.25" y2="1">
+              <stop offset="0%" stop-color="#0084c9"/>
+              <stop offset="30%" stop-color="#017ebd"/>
+              <stop offset="58%" stop-color="#0d9d5a"/>
+              <stop offset="100%" stop-color="#6bc647"/>
+            </linearGradient>
+          </defs>
+          <path class="diag-line" id="inaDiagLine" d="M -24 -6 C -7.5 10 48.667 40.833 75 90 C 101.333 139.167 120.167 221.167 134 289 C 147.833 356.833 165.167 426.333 158 497 C 150.833 567.667 107.667 656.5 91 713 C 74.333 769.5 63.5 815.5 58 836"/>
+          <g id="inaDiagArrows"></g>
+        </svg>
+        <button type="button" class="diag-entry" id="inaDiagEntry" aria-expanded="false">关于弹性退休?</button>
+        <div class="diag-entry-panel" id="inaDiagEntryPanel"><span class="diag-ep-line">关于弹性退休，指在政策划定的时间窗口以内，可以选择早于法定退休年龄办理养老保险退休。</span><span class="diag-ep-line">想要办理弹性退休，前提必须缴满政策规定对应的养老保险最低年限。</span><span class="diag-ep-line">弹性退休、法定退休，两者要求的最低缴费年限标准并不相同。</span><span class="diag-ep-line">企业在岗职工：办理弹性退休，需要与用人单位协商一致，单位同意才可申报。</span><span class="diag-ep-line">灵活就业参保人员：本人自愿申请即可。</span></div>
+        <div id="inaDiagNodes"></div>
+      </div>
     </div>
 
     <div id="formErr" class="calc-error"></div>
@@ -5169,7 +5200,11 @@
    * 固定 4 节点：现在 | 弹性最早 | 法定退休 | 延迟最晚
    * 特殊工种提前退休节点（如有且满足年限）插入在弹性最早之后、法定退休之前。
    */
-  function renderTimeline(c) {
+  /** 时间轴节点构造（single source of truth）：只依赖 compute 产物 c。
+   *  「现在 / 弹性最早 / 特殊工种提前 / 法定退休 / 延迟最晚」的构造逻辑只此一处；
+   *  结果页横向时间轴（renderTimeline）与深度表单页顶部弧线（renderInputArcByIdentity）共用，
+   *  绝不复制第二份节点构造逻辑。 */
+  function buildTimelineNodes(c) {
     var nodes = [];
 
     // 始终有「现在」
@@ -5212,6 +5247,12 @@
     });
 
     nodes.sort(function (a, b) { return a.order - b.order; });
+    return nodes;
+  }
+
+  /** 旧横向时间轴渲染 + 对角线桥接（行为与 v1.0.39 一致）。 */
+  function renderTimeline(c) {
+    var nodes = buildTimelineNodes(c);
 
     var html = '';
     for (var i = 0; i < nodes.length; i += 1) {
@@ -5249,6 +5290,15 @@
         renderDiagonal(nodes, c);
       }
     } catch (eDiag) { console.error('renderDiagonal bridge:', eDiag); }
+
+    /* 【v1.0.40】深度表单页顶部弧线：输入页可见且职工表单在用时同步重画。
+       走「身份口径」而非本次的 c —— 深度模式的 c 要求缴费/工资全齐，
+       用户在输入页中途改出生年月时往往拿不到，弧线会停在旧值。 */
+    try {
+      if (typeof window.renderInputArcByIdentity === 'function') {
+        window.renderInputArcByIdentity();
+      }
+    } catch (eIna) { console.error('renderInputArc bridge:', eIna); }
   }
 
   /* ==================================================================== */
@@ -5675,39 +5725,28 @@
    *  @return {string} 归一化后的数值字符串。 */
   function diagNum(v) { return String(Math.round(v * 1000) / 1000); }
 
-  function renderDiagonal(nodes, c) {
-    diagBindCta();
-    diagBindEntry();
+  /** 【v1.0.40】弧线渲染宿主：同一套绘图核心输出到「结果页」与「深度表单页」两处。
+   *  结果页沿用既有 id；深度表单页用 ina 前缀（#page-input 顶部 #inaDiagSection）。
+   *  @param {boolean=} input true=深度表单页那一套；false / 省略=结果页那一套。
+   *  @return {!Object} {section,wrap,box,line,arrows,entry,panel}，未命中的键为 null。 */
+  function diagHostOf(input) {
+    return input
+      ? { section: $('inaDiagSection'), wrap: $('inaDiagWrap'), box: $('inaDiagNodes'),
+          line: $('inaDiagLine'), arrows: $('inaDiagArrows'),
+          entry: $('inaDiagEntry'), panel: $('inaDiagEntryPanel') }
+      : { section: $('diagSection'), wrap: $('diagWrap'), box: $('diagNodes'),
+          line: $('diagLine'), arrows: $('diagArrows'),
+          entry: $('diagEntry'), panel: $('diagEntryPanel') };
+  }
 
-    var section = $('diagSection');
-    if (!section) return;
-
-    // 仅当进入「对角线预览」流程（用户提交参数）时才渲染，
-    // 避免实时输入 / setGender 等被动重算路径反复触发重渲染。
-    if (!_diagPreviewActive) {
-      return;
-    }
-    _diagPreviewActive = false;
-
-    // 弧线常驻：不再有额度门禁与自动收起，直接展示对角线段落。
-    section.style.display = 'block';
-    // 开发者模式：现唯一可观测作用 —— 显示开发者提示条（非开发态不显示）。
-    if (diagDevOn()) { diagShowDevNote(); }
-    // 「您的专属答案」真值：仅存内存（_diagAnsCache），绝不写入 DOM。
-    // 字段逐字取自 compute 产物 c：minMonthsEarly / minMonths / totalPaid / gapMonthsEarly。
-    if (c) {
-      _diagAnsCache = {
-        flex:  fmtYearsMonths(c.minMonthsEarly),
-        legal: fmtYearsMonths(c.minMonths),
-        paid:  fmtYearsMonths(c.totalPaid),
-        gap:   fmtYearsMonths(c.gapMonthsEarly)
-      };
-    }
-
-    var list = (nodes || []).slice();
-    list.sort(function (a, b) { return a.order - b.order; });
-    var n = list.length;
-    if (n === 0) { diagClearView(); return; }
+  /** 纯绘图核心：弧线几何 / 方向箭头 / 节点文字的「全站唯一实现」。
+   *  结果页对角线（renderDiagonal）与深度表单页顶部弧线（renderInputDiagonal）
+   *  共用本函数 ⇒ 两处弧线走向、节点落位、字号间距逐像素一致，绝不出现两套分支。
+   *  @param {!Object} hs diagHostOf() 产物（只用到 wrap / box / line / arrows）。
+   *  @param {!Array} list 已按 order 升序排好的节点数组。
+   *  @param {number} n 节点个数。
+   *  @return {!Array} repNodes 报告用节点快照（供 _diagReportSnap 使用）。 */
+  function diagPaint(hs, list, n) {
 
     /* ---- 对角线几何：viewBox 332×820 的「真实像素」坐标系 ----
        节点用百分比落位（left = x/332、top = y/820），与 SVG 曲线在任意画布宽度下
@@ -5724,10 +5763,10 @@
     var DIAG_START = { x: -24, y: -6 };
     var DIAG_END = { x: 58,  y: 836 };
 
-    var wrapEl = $('diagWrap');
+    var wrapEl = hs.wrap;
     if (wrapEl) wrapEl.style.display = 'block';
-    var box = $('diagNodes');
-    if (!box) return;
+    var box = hs.box;
+    if (!box) return [];
 
     // 布点：n===4 用设计稿基准表；其余 n 沿首尾锚点等距内插（防御分支，保证不出画布）。
     var anchors = [];
@@ -5758,7 +5797,7 @@
       dStr += ' C ' + diagNum(c1x) + ' ' + diagNum(c1y) + ' ' + diagNum(c2x) + ' ' + diagNum(c2y)
         + ' ' + diagNum(p2.x) + ' ' + diagNum(p2.y);
     }
-    var lineEl = $('diagLine');
+    var lineEl = hs.line;
     if (lineEl) { lineEl.setAttribute('d', dStr); }
 
     /* 红色方向箭头（n 个节点 ⇒ n−1 个）：相邻节点连线中点沿左下法线外移 26px，
@@ -5766,7 +5805,7 @@
        SVG 命名空间 URI，会引入 http(s):// 字面量），改为字符串拼接后一次性写入
        静态 <g id="diagArrows"> 的 innerHTML（与项目其它 box.innerHTML = html 一致）；
        赋值即自动清空旧箭头，无需逐个 removeChild。 */
-    var gArrows = $('diagArrows');
+    var gArrows = hs.arrows;
     if (gArrows) {
       var arrHtml = '';
       for (var ai = 0; ai < anchors.length - 1; ai += 1) {
@@ -5833,6 +5872,49 @@
         + '</div>';
     }
     box.innerHTML = html;
+    return repNodes;
+  }
+
+  /** 结果页对角线主渲染：消费 renderTimeline 产出的 nodes。
+   *  行为与 v1.0.39 完全一致（预览门禁、答案真值缓存、报告快照、旧视图隐藏全部保留），
+   *  仅把「纯绘图」下沉到 diagPaint，供深度表单页共用。
+   *  @param {!Array<!Object>} nodes 由 renderTimeline 构造并传入（非复制）。
+   *  @param {!Object} c compute 产物（用于取「您的专属答案」真值与报告快照）。 */
+  function renderDiagonal(nodes, c) {
+    diagBindCta();
+    diagBindEntry();
+
+    var section = $('diagSection');
+    if (!section) return;
+
+    // 仅当进入「对角线预览」流程（用户提交参数）时才渲染，
+    // 避免实时输入 / setGender 等被动重算路径反复触发重渲染。
+    if (!_diagPreviewActive) {
+      return;
+    }
+    _diagPreviewActive = false;
+
+    // 弧线常驻：不再有额度门禁与自动收起，直接展示对角线段落。
+    section.style.display = 'block';
+    // 开发者模式：现唯一可观测作用 —— 显示开发者提示条（非开发态不显示）。
+    if (diagDevOn()) { diagShowDevNote(); }
+    // 「您的专属答案」真值：仅存内存（_diagAnsCache），绝不写入 DOM。
+    // 字段逐字取自 compute 产物 c：minMonthsEarly / minMonths / totalPaid / gapMonthsEarly。
+    if (c) {
+      _diagAnsCache = {
+        flex:  fmtYearsMonths(c.minMonthsEarly),
+        legal: fmtYearsMonths(c.minMonths),
+        paid:  fmtYearsMonths(c.totalPaid),
+        gap:   fmtYearsMonths(c.gapMonthsEarly)
+      };
+    }
+
+    var list = (nodes || []).slice();
+    list.sort(function (a, b) { return a.order - b.order; });
+    var n = list.length;
+    if (n === 0) { diagClearView(); return; }
+
+    var repNodes = diagPaint(diagHostOf(false), list, n);
 
     /* 【v1.0.35 详情报告】固化报告快照：预览内容 = 本次测算那一刻的结果 */
     _diagReportSnap = {
@@ -5851,6 +5933,101 @@
     diagApplyHideLegacy();
   }
   window.renderDiagonal = renderDiagonal;
+
+  /** 【v1.0.40】深度表单页「关于弹性退休?」入口绑定（与结果页同一交互，各自幂等）。 */
+  var _diagEntryInBound = false;
+  function diagBindEntryIn(hs) {
+    if (_diagEntryInBound) return;
+    var btn = hs.entry, panel = hs.panel;
+    if (!btn || !panel) return;
+    btn.onclick = function () {
+      var on = panel.className.indexOf('show') < 0;
+      panel.className = on ? 'diag-entry-panel show' : 'diag-entry-panel';
+      btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    };
+    _diagEntryInBound = true;
+  }
+
+  /** 【v1.0.40】深度表单页顶部弧线：与结果页共用 diagPaint 绘图核心。
+   *  节点数据同样取自 renderTimeline 产出的 nodes（single source of truth，不复制构造逻辑）。
+   *  纯展示：不置位 / 不消费 _diagPreviewActive、_arcRendered 等门禁标记 ⇒
+   *  结果页既有行为（含付费门禁与 v1.0.39 弧线重放判定）完全不变。 */
+  function renderInputDiagonal(nodes) {
+    var hs = diagHostOf(true);
+    if (!hs.section || !hs.box) return;
+    var list = (nodes || []).slice();
+    list.sort(function (a, b) { return a.order - b.order; });
+    if (list.length === 0) {
+      hs.section.style.display = 'none';
+      hs.box.innerHTML = '';
+      return;
+    }
+    hs.section.style.display = 'block';
+    diagPaint(hs, list, list.length);
+    diagBindEntryIn(hs);
+  }
+
+  /** 【v1.0.40】深度表单页是否正在显示、且处于职工（企业）表单态。
+   *  机关事业单位走 #govForm（#enterpriseForm 被 display:none），不渲染职工弧线。 */
+  function diagInputVisible() {
+    var pi = $('page-input');
+    if (!pi || !pi.classList.contains('show')) return false;
+    var ef = $('enterpriseForm');
+    if (ef && ef.style.display === 'none') return false;
+    return true;
+  }
+
+  /** 【v1.0.40】输入页弧线：按「身份口径」现算节点并绘制。
+   *  ★ 为什么不用 recompute 产出的 c：深入口是深度模式，compute(f,false) 要求
+   *    「首次/最后参保时间 + 累计已缴 + 工资 + 个人账户」全部齐备；用户刚进深度表单
+   *    时这些必然为空 ⇒ compute 返回 null、recompute 提前 return、renderTimeline 根本
+   *    不执行 ⇒ 弧线永远出不来（实测：卡片B 直达时 #inaDiagSection 一直 display:none）。
+   *    而弧线的 4 个节点只依赖「出生年月 + 性别 + 身份类别」，故此处统一走
+   *    compute(f, true)（= 卡片A 简版查询同一把尺子），与"解析完身份就出弧线"完全吻合。
+   *  纯展示：不置位 / 不消费 _diagPreviewActive、_arcRendered 等门禁标记 ⇒
+   *  结果页既有行为（含付费门禁与 v1.0.39 弧线重放判定）完全不变。 */
+  function renderInputArcByIdentity() {
+    var hs = diagHostOf(true);
+    if (!hs.section) return;
+    if (!diagInputVisible()) { hs.section.style.display = 'none'; return; }
+    var list = [];
+    try {
+      var f = readForm();
+      // ★ E7 修复（v1.0.40 上线前补丁）：清空后 readForm 对未填生日返回 null；注意
+      //   isFinite(null)===true（JS 怪癖，node 已证实），所以「先 isFinite 再算」的写法仍会放行，
+      //   导致 lite 模式用 birthY=0 算出退化时间轴（"现在 2026周岁… / 弹性最早 59年12月…"）。
+      //   故此处必须显式排除 null/undefined，再算 compute：生日无效 ⇒ list 保持空，
+      //   renderInputDiagonal 会 display:none 并清空节点，弧线正确收起。
+      if (f && f.birthY != null && f.birthM != null && isFinite(f.birthY) && isFinite(f.birthM)) {
+        var c = compute(f, true);
+        if (c) { list = buildTimelineNodes(c); }
+      }
+    } catch (e) { console.error('renderInputArcByIdentity compute:', e); }
+    renderInputDiagonal(list);
+  }
+  window.renderInputArcByIdentity = renderInputArcByIdentity;
+
+  /** 【v1.0.40】输入页弧线「跟随身份变化」：出生年月 / 性别 在输入页被改动时同步重画。
+   *  只监听 #page-input 内部、且只认 birthY / birthM / gender 三类字段，避免无谓重算；
+   *  全程 try/catch 静默降级，任何异常都不影响主流程。 */
+  function diagWatchInputIdentity() {
+    var pi = $('page-input');
+    if (!pi || pi.getAttribute('data-arc-watch') === '1') return;
+    pi.setAttribute('data-arc-watch', '1');
+    var IDS = { birthY: 1, birthM: 1 };
+    var refresh = function () {
+      try { if (typeof renderInputArcByIdentity === 'function') { renderInputArcByIdentity(); } } catch (e) { }
+    };
+    pi.addEventListener('input', function (ev) {
+      var t = ev.target;
+      if (t && IDS[t.id]) { refresh(); }
+    }, true);
+    pi.addEventListener('change', function (ev) {
+      var t = ev.target;
+      if (t && (IDS[t.id] || t.name === 'gender')) { refresh(); }
+    }, true);
+  }
+  diagWatchInputIdentity();
 
   /** 生成节点「说明行」文案（文字块第三行）。
    *  动态优先、固定兜底：优先采用引擎给出的真实状态（nd.tag 里的状态词），
@@ -8923,6 +9100,11 @@
     applyCarryLock(carried);
     showPage('page-input');
     showInputPane('pane-basic');
+    /* 【v1.0.40】深度表单页顶部弧线：显式走「身份口径」现算一次，不依赖下面的 recompute
+       —— 深度 compute 在半空表单下必然返回 null，等它出弧线是等不到的。 */
+    try {
+      if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); }
+    } catch (eArcB) { console.error('enterStaffDeep arc:', eArcB); }
     try { recompute(); } catch(e) { console.error('enterStaffDeep recompute:', e); }
   }
   window.enterStaffDeep = enterStaffDeep;
@@ -8932,6 +9114,8 @@
     $('category').value = 'GOV';
     updateCategoryHint(); // 触发企业/机关表单切换
     showPage('page-input');
+    /* 【v1.0.40】机关不使用职工弧线：显式收起输入页弧线，防上一次职工会话的残留显示。 */
+    try { if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); } } catch (eGovArc) { console.error('enterInstitution arc:', eGovArc); }
     // 机关表单不需要 pane 切换（无 tab），直接显示 govForm 即可
   }
 
@@ -9314,6 +9498,11 @@
     if (carried) applyCarryLock(carried);
     showPage('page-input');
     showInputPane('pane-basic');
+    /* 【v1.0.40】本入口不调 recompute，故显式补一次顶部弧线绘制。
+       与卡片B 完全同一套「身份口径」，保证两条入口的弧线一模一样。 */
+    try {
+      if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); }
+    } catch (eArc) { console.error('goDeepFromSimple arc:', eArc); }
   }
   window.goDeepFromSimple = goDeepFromSimple;
 
@@ -10021,6 +10210,8 @@
     _arcRendered = false;
     /* 【v1.0.38·携值收起】整表复位时一并清掉携值收起态，避免残留导致下次进来这一节无故消失。 */
     setCarryHide(false);
+    /* 【v1.0.40】输入页顶部弧线同步重画（字段已清空 ⇒ 自动收起；初始化时不在输入页亦无害）。 */
+    try { if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); } } catch (eRstArc) { console.error('resetFormToBlank arc:', eRstArc); }
     var ov = $('basicLockOverlay');
     if (ov) ov.classList.remove('active');
     /* 【v1.0.37 续·携值锁定】整表重置时一并放开身份类别，避免携值锁定残留 */
@@ -10068,6 +10259,8 @@
     /* 【v1.0.39】一键清空＝用户显式要求重来：一并复位「弧线已渲染」标记，
        使清空后再走卡片B 直达深度测算时重新渲染弧线（与 resetFormToBlank 口径一致）。 */
     _arcRendered = false;
+    /* 【v1.0.40】输入页顶部弧线同步重画：出生年月已清空 ⇒ compute 返回 null ⇒ 弧线自动收起。 */
+    try { if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); } } catch (eClrArc) { console.error('btnClearForm arc:', eClrArc); }
     toast('已清空所有输入');
   });
   if ($('btnGoBack')) $('btnGoBack').addEventListener('click', goBackPage);
@@ -11303,7 +11496,11 @@
   }
 
   // 切换身份类别时同步更新提示文案
-  $('category').addEventListener('change', function () { updateCategoryHint(); recompute(); });
+  $('category').addEventListener('change', function () {
+    updateCategoryHint(); recompute();
+    /* 【v1.0.40】身份类别变了 ⇒ 深度表单页顶部弧线同步重画（仅输入页可见时生效）。 */
+    try { if (typeof window.renderInputArcByIdentity === 'function') { window.renderInputArcByIdentity(); } } catch (eCatArc) { console.error('category arc:', eCatArc); }
+  });
 
   /* ================= 查询深度二选一：简易查询 / 深度测算 =================
    * 简易查询：只需「出生年月＋性别＋身份」，即可给出退休时间轴与最低缴费年限；
